@@ -1,9 +1,8 @@
 {
-  "name": "ts-monorepo",
+  "name": "@fractaldb/workspace",
   "description": "Template for setting up a TypeScript monorepo",
   "workspaces": [
-    "packages/*",
-    "examples/*"
+    "packages/*"
   ],
   "private": true,
   "scripts": {
@@ -15,15 +14,16 @@
     "lint": "eslint --ext js,ts,tsx ."
   },
   "devDependencies": {
-    "@nighttrax/eslint-config-tsx": "~8.0.0",
-    "doctoc": "~2.0.0",
     "eslint": "~7.25.0",
     "eslint-plugin-import": "~2.22.1",
     "lerna": "~4.0.0",
-    "react": "~17.0.0",
     "typescript": "~4.2.0"
   },
   "engines": {
     "npm": ">=7"
+  },
+  "dependencies": {
+    "@types/node": "^15.0.2",
+    "bson-objectid": "^2.0.1"
   }
 }

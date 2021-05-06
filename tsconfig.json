@@ -4,7 +4,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@nighttrax/*": ["packages/*/src"]
+      "@fractaldb/*": ["packages/*/src"],
+      "@fractaldb/fractal-client": ["packages/client/src"],
+      "@fractaldb/fractal-server": ["packages/server/src"],
+      "@fractaldb/shared": ["packages/shared/src"]
     }
   }
 }

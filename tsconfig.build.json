@@ -1,13 +1,14 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es5",
+    "composite": true,
+    "module": "esnext",
+    "target": "esnext",
     "sourceMap": true,
     "noEmitOnError": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "types": [],
-    "jsx": "react"
+    "moduleResolution": "node",
+    "types": ["node"],
   },
   "exclude": [
     "node_modules",

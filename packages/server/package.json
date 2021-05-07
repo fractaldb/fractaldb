@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/fractal-server",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "main": "dist/index",
   "types": "dist/index",
   "files": [
@@ -14,11 +14,11 @@
     "test": "npm run build"
   },
   "dependencies": {
-    "@fractaldb/shared": "^0.0.10"
+    "@fractaldb/shared": "^0.0.11"
   },
   "devDependencies": {
     "rimraf": "~3.0.2",
     "typescript": "~4.2.0"
   },
-  "gitHead": "48ebb111496beceb0aa453bc0c7cee03600912f9"
+  "gitHead": "5253ad67eb94e798b1233170447340f2c7cebcdc"
 }

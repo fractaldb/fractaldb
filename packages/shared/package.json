@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/shared",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "main": "dist/index",
   "types": "dist/index",
   "files": [
@@ -9,9 +9,9 @@
   "scripts": {
     "build": "npm run clean && npm run compile",
     "clean": "rimraf -rf ./dist",
-    "compile": "tsc -p tsconfig.json",
+    "compile": "tsc",
     "prepublishOnly": "npm run build",
     "test": "npm run build"
   },
-  "gitHead": "f2f275bb0889a4082cf9188f3aea36a3f194f527"
+  "gitHead": "ed7d3189de2c1d71e30949e7c12298e6bed8730e"
 }

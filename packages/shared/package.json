@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/shared",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "main": "dist/index",
   "types": "dist/index",
   "files": [
@@ -13,5 +13,5 @@
     "prepublishOnly": "npm run build",
     "test": "npm run build"
   },
-  "gitHead": "28bafa218e9186f7aea1a273a6dc8587a832b6ae"
+  "gitHead": "48ebb111496beceb0aa453bc0c7cee03600912f9"
 }

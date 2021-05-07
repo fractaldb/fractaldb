@@ -1,13 +1,40 @@
 {
-  "extends": "./tsconfig.build.json",
-
   "compilerOptions": {
-    "baseUrl": ".",
+    "incremental": true,
+    "composite": true,
+    "declaration": true,
+    "baseUrl": "src",
+    "module": "CommonJS",
+    "lib": [
+      "ESNext"
+    ],
+    "strict": true,
+    "target": "ESNext",
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "types": ["node"],
     "paths": {
-      "@fractaldb/*": ["packages/*/src"],
       "@fractaldb/fractal-client": ["packages/client/src"],
       "@fractaldb/fractal-server": ["packages/server/src"],
       "@fractaldb/shared": ["packages/shared/src"]
     }
-  }
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "packages/server"
+    },
+    {
+      "path": "packages/client"
+    },
+    {
+      "path": "packages/shared"
+    }
+  ],
+  "include": [
+    "packages/*/src",
+  ]
 }

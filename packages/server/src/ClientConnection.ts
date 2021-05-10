@@ -1,6 +1,6 @@
 import { Socket } from 'net'
 import EventEmitter from 'events'
-import { OperationResponse, RequestOperation } from '@fractaldb/shared/src/operations'
+import { OperationResponse, RequestOperation } from '@fractaldb/shared/operations'
 import { FractalServer } from './Server'
 import Session from './Session'
 import { randomBytes } from 'crypto'
@@ -27,7 +27,7 @@ import { InsertOneCommand } from './commands/InsertOne'
 import { StartTransactionCommand } from './commands/StartTransaction'
 import { UpdateManyCommand } from './commands/UpdateMany'
 import { CommitTransactionCommand } from './commands/CommitTransaction'
-import { splitBufferStream } from '@fractaldb/shared/src/utils/splitStream'
+import { splitBufferStream } from '@fractaldb/shared/utils/splitStream'
 
 export default class ClientConnection extends EventEmitter {
     socket: Socket

@@ -2,9 +2,9 @@ import Database from './Database'
 import Cursor from './Cursor'
 import FindOperation, { FindCommand } from './operations/FindOperation'
 import { FractalNamespace, uuidV4 } from './utils'
-import { UpdateOperation } from '@fractaldb/shared/src/utils/JSONPatch'
-import { Operation, OperationResponse } from '@fractaldb/shared/src/operations'
-import JSONObject from '@fractaldb/shared/src/utils/JSONObject'
+import { UpdateOperation } from '@fractaldb/shared/utils/JSONPatch'
+import { Operation, OperationResponse } from '@fractaldb/shared/operations'
+import JSONObject from '@fractaldb/shared/utils/JSONObject'
 
 export default class Collection {
     name: string

@@ -1,17 +1,13 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "composite": true,
-    "declaration": true,
+    "baseUrl": ".",
+    "rootDir": "src",
     "outDir": "dist",
-    "rootDir": "src"
-  },
-  "references": [
-    {
-      "path": "../shared"
+    "paths": {
+      "@fractaldb/shared": ["./../shared/src/"],
+      "@fractaldb/shared/*": ["./../shared/src/*"]
     }
-  ],
-  "include": [
-    "src/**/*"
-  ]
+  },
+  "references": [{ "path": "../shared" }]
 }

@@ -1,40 +1,16 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "composite": true,
-    "declaration": true,
-    "baseUrl": "src",
-    "module": "CommonJS",
-    "lib": [
-      "ESNext"
-    ],
-    "strict": true,
     "target": "ESNext",
+    "module": "CommonJS",
+    "declaration": true,
     "sourceMap": true,
+    "composite": true,
+    "strict": true,
+    "moduleResolution": "node",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
     "types": ["node"],
-    "paths": {
-      "@fractaldb/fractal-client": ["packages/client/src"],
-      "@fractaldb/fractal-server": ["packages/server/src"],
-      "@fractaldb/shared": ["packages/shared/src"]
-    }
-  },
-  "files": [],
-  "references": [
-    {
-      "path": "packages/server"
-    },
-    {
-      "path": "packages/client"
-    },
-    {
-      "path": "packages/shared"
-    }
-  ],
-  "include": [
-    "packages/*/src",
-  ]
+  }
 }

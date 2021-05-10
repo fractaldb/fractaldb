@@ -1,12 +1,11 @@
 {
   "name": "@fractaldb/shared",
   "version": "0.0.18",
-  "main": "dist/index",
-  "types": "dist/index",
   "type": "commonjs",
-  "files": [
-    "dist"
-  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./": "./dist/"
+  },
   "scripts": {
     "build": "npm run clean && npm run compile",
     "clean": "rimraf -rf ./dist",

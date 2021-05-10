@@ -1,7 +1,7 @@
 
 // this is the database representation of the docs
 
-import JSONObject from '@fractaldb/shared/src/utils/JSONObject'
+import JSONObject from '@fractaldb/shared/utils/JSONObject'
 
 export type internalID = number
 export type entityID = string

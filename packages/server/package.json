@@ -11,12 +11,12 @@
     "build": "npm run clean && npm run compile",
     "clean": "rimraf -rf ./dist",
     "compile": "tsc",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run compile",
     "test": "npm run build"
   },
   "dependencies": {
     "@fractaldb/shared": "^0.0.20",
     "@types/node": "^15.0.2"
   },
-  "gitHead": "b10337d9aa0e5864764d876b5ab9fce513164ef8"
+  "gitHead": "704fe5bb91fdd557ab74fe4c5981204d00785e18"
 }

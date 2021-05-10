@@ -15,7 +15,8 @@
     "test": "npm run build"
   },
   "dependencies": {
-    "@fractaldb/shared": "^0.0.19"
+    "@fractaldb/shared": "^0.0.19",
+    "@types/node": "^15.0.2"
   },
-  "gitHead": "50f525f4b43338393fc5f6bc9096350ad6b19481"
+  "gitHead": "b10337d9aa0e5864764d876b5ab9fce513164ef8"
 }

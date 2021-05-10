@@ -13,5 +13,8 @@
     "prepublishOnly": "npm run build",
     "test": "npm run build"
   },
-  "gitHead": "50f525f4b43338393fc5f6bc9096350ad6b19481"
+  "gitHead": "b10337d9aa0e5864764d876b5ab9fce513164ef8",
+  "dependencies": {
+    "bson-objectid": "^2.0.1"
+  }
 }

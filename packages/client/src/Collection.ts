@@ -26,7 +26,7 @@ export default class Collection {
 
         let responsePromise = new Promise(resolve => this.database.client.on(`response:${requestID}`, resolve))
 
-        this.socket.write(Buffer.concat([Buffer.from(JSON.stringify(json)), Buffer.alloc(1, 0x00)]))
+        this.socket.write(Buffer.concat([Buffer.from(JSON.stringify({...json, requestID})), Buffer.alloc(1, 0x00)]))
 
         return responsePromise
     }

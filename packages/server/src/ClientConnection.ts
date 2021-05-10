@@ -42,7 +42,7 @@ export default class ClientConnection extends EventEmitter {
 
         let bufferStream = splitBufferStream(str => this.handleMessage(str))
 
-        socket.on('data', bufferStream)
+        socket.on('data', data => bufferStream(data))
     }
 
     sendMessage(json: { requestID: string, response: OperationResponse}){
@@ -101,7 +101,7 @@ export default class ClientConnection extends EventEmitter {
         }
 
         if(commit) await tx.commit()
-
+        
         this.sendMessage({ requestID: operation.requestID, response })
     }
 }

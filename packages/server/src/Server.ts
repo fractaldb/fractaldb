@@ -17,7 +17,6 @@ export class FractalServer extends EventEmitter {
         this.server = net.createServer()
         this.store = new DocStore(new Map())
         this.server.on('connection', socket => this.newConnection(socket))
-
     }
 
     beginTx(txID: string){
@@ -34,9 +33,11 @@ export class FractalServer extends EventEmitter {
         })
     }
     
-    start() {
+    async start() {
         if(this.server.listening) throw new Error('FractalServer has already been started')
+        let promise = new Promise(resolve => this.server.on('listening', resolve))
         this.server.listen(24000)
+        await promise
     }
 
     stop () {

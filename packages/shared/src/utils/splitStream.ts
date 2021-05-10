@@ -19,6 +19,7 @@ export function splitBufferStream(cb: (message: string) => void ) {
             i++
         }
 
+
         // while(true) {
         //     i = data.indexOf(0, start)
         //     if(i === -1) {

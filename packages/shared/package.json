@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/shared",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "type": "commonjs",
   "exports": {
     ".": "./dist/index.js",

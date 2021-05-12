@@ -24,7 +24,6 @@ export class FractalClient extends EventEmitter {
 
         let bufferStream = splitBufferStream(str => {
             let obj = JSON.parse(str)
-            console.log(obj)
             let requestID = obj.requestID
             this.emit(`response:${requestID}`, obj.response)
         })

@@ -58,7 +58,6 @@ export default class ClientConnection extends EventEmitter {
 
         // get the transaction by it's ID if set, otherwise create a new transaction
         let tx = this.server.beginTx(txID)
-        if(operation.op === 'FindOne') console.log(tx.store.docs.size)
 
         switch (operation.op) {
             case 'AbortTransaction':

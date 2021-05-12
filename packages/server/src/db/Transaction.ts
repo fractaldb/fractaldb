@@ -158,15 +158,15 @@ export class Transaction implements TransactionInterface {
     }
 
     updateOne(query: any, updateOps: UpdateOperation[], options?: queryOption) {
-        let doc = this.findOne(query)
+        let entity = this.findOne(query)
         let updatedCount = 0
 
-        if(doc) {
+        if(entity) {
             let i = 0, len = updateOps.length
             while(i < len){
                 let op = updateOps[i++]
                 
-                doc = apply(doc, op)
+                entity.doc = apply(JSON.parse(JSON.stringify(entity.doc)), op)
             }
             updatedCount++
         }
@@ -175,15 +175,15 @@ export class Transaction implements TransactionInterface {
     }
 
     updateMany(query: any, updateOps: UpdateOperation[], options?: queryOption) {
-        let docs = this.findMany(query)
+        let entities = this.findMany(query)
         let updatedCount = 0
         
-        docs.map(doc => { 
+        entities.map(entity => { 
             let i = 0, len = updateOps.length
             while(i < len){
                 let op = updateOps[i++]
                 
-                doc = apply(doc, op)
+                entity.doc = apply(JSON.parse(JSON.stringify(entity.doc)), op)
             }
             updatedCount++
         })

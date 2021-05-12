@@ -1,3 +1,10 @@
+
+```
+lerna run watch --parallel
+lerna link
+lerna run compile
+lerna publish
+```
 <!--suppress HtmlDeprecatedAttribute -->
 <div align="center">
 

@@ -85,6 +85,10 @@ class TransactionState {
         return this.store.findOne(query)
     }
 
+    updateEntity(entity: Entity) {
+        this.writeDocOps.set(entity.internalID, entity)
+    }
+
     createEntity(doc: any = {}) {
         let internalID = this.reserveID()
         let entityID = new ObjectID().toHexString()
@@ -167,6 +171,7 @@ export class Transaction implements TransactionInterface {
                 let op = updateOps[i++]
                 
                 entity.doc = apply(JSON.parse(JSON.stringify(entity.doc)), op)
+                this.state.updateEntity(entity)
             }
             updatedCount++
         }
@@ -184,6 +189,7 @@ export class Transaction implements TransactionInterface {
                 let op = updateOps[i++]
                 
                 entity.doc = apply(JSON.parse(JSON.stringify(entity.doc)), op)
+                this.state.updateEntity(entity)
             }
             updatedCount++
         })

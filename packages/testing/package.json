@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/testing",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "dist/index",
   "types": "dist/index",
   "private": true,
@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@fractaldb/fractal-client": "^0.1.0",
-    "@fractaldb/fractal-server": "^0.1.0",
+    "@fractaldb/fractal-server": "^0.1.1",
     "@types/node": "^15.0.2"
   },
   "gitHead": "704fe5bb91fdd557ab74fe4c5981204d00785e18"

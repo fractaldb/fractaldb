@@ -1,22 +1,11 @@
 
 // this is the database representation of the docs
+import { Entity } from '@fractaldb/shared/utils/Entity'
+import { EntityID } from '@fractaldb/adn/EntityID'
 
-import JSONObject from '@fractaldb/shared/utils/JSONObject'
+export type EntityMap = Map<number, Entity>
 
-export type internalID = number
-export type entityID = string
-export type EntityObj = {
-    entityID: entityID,
-    doc: JSONObject
-}
-export type Entity = { internalID: internalID } & EntityObj
-export type EntityMap = Map<internalID, EntityObj>
-export type InsertedID = {
-    internalID: internalID,
-    entityID: entityID
-}
-
-function matchesQuery(doc: JSONObject, query: JSONObject) {
+function matchesQuery(doc: any, query: any) {
     let match = true
     for (const prop in query) {
         if (doc[prop] !== query[prop]) {
@@ -37,17 +26,13 @@ export class DocStore {
     }
 
     findOne(query: any): Entity | null {
-        // add indexing here currently O(log n)
+        // add indexing here currently O(n) instead of O(log n)
         let iter = this.docs.entries()
 
-        for (const [internalID, { entityID, doc }] of iter) {
+        for (const [internalID, doc] of iter) {
             if(!matchesQuery(doc, query)) continue
 
-            return {
-                internalID,
-                entityID,
-                doc
-            }
+            return doc
         }
 
         return null
@@ -57,27 +42,19 @@ export class DocStore {
         // add indexing here currently O(n)
         let iter = this.docs.entries()
         let docs: Entity[] = []
-        for (const [internalID, { entityID, doc }] of iter) {
+        for (const [internalID, doc] of iter) {
             if(!matchesQuery(doc, query)) continue
 
-            docs.push({
-                internalID,
-                entityID,
-                doc
-            })
+            docs.push(doc)
         }
 
         return docs
     }
 
-    findByInternalID(internalID: number): Entity | null {
-        let entity = this.docs.get(internalID)
+    findByEntityID(entityID: EntityID): Entity | null {
+        let entity = this.docs.get(entityID.internalID)
         if(!entity) return null
-        return {
-            internalID,
-            entityID: entity.entityID,
-            doc: entity.doc
-        }
+        return entity
     }
 
     nextID(): number {

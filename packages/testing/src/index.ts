@@ -7,8 +7,6 @@ await server.start()
 
 let client = new FractalClient()
 
-
 let items = client.db('main').collection('items')
 
-console.log('test')
 console.log(await items.insertOne({}))

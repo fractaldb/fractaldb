@@ -16,6 +16,6 @@
   },
   "gitHead": "704fe5bb91fdd557ab74fe4c5981204d00785e18",
   "dependencies": {
-    "bson-objectid": "^2.0.1"
+    "@framework-tools/adn": "1.0.9"
   }
 }

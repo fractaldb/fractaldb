@@ -2,6 +2,10 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "paths": {
+      "@framework-tools/adn": ["./node_modules/@framework-tools/adn/dist/index"],
+      "@framework-tools/adn/*": ["./node_modules/@framework-tools/adn/dist/*"]
+    }
   }
 }

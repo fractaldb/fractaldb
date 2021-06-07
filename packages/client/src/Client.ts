@@ -1,11 +1,12 @@
 import net, { Socket } from 'net'
 import EventEmitter from 'events'
 import { Operation } from '@fractaldb/shared/operations'
-import { splitBufferStream } from '@fractaldb/shared/utils/splitStream'
+import { splitBufferStream } from '@fractaldb/shared/utils/buffer'
 import Collection from './Collection'
 import Cursor from './Cursor'
 import Database from './Database'
 import { ClientSession } from './Session'
+import { deserialize } from '@framework-tools/adn'
 
 type FractalClientOptions = {
     host: string
@@ -23,7 +24,7 @@ export class FractalClient extends EventEmitter {
         this.socket.setNoDelay(false)
 
         let bufferStream = splitBufferStream(str => {
-            let obj = JSON.parse(str)
+            let obj = deserialize(str)
             let requestID = obj.requestID
             this.emit(`response:${requestID}`, obj.response)
         })

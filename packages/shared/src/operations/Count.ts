@@ -1,9 +1,9 @@
-import JSONObject from '../utils/JSONObject'
+import { Entity } from '../utils/Entity'
 import { BaseOperation } from './BaseOperation'
 
 export interface Count extends BaseOperation {
     op: 'Count'
-    query: JSONObject
+    query: Entity
 }
 
 export interface CountResponse {

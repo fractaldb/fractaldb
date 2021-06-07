@@ -1,4 +1,4 @@
-import { DocStore, Entity, EntityMap } from './DocStore'
+import { DocStore, EntityMap } from './DocStore'
 import { apply, UpdateOperation } from '@fractaldb/shared/utils/JSONPatch'
 import { InsertManyResponse } from '@fractaldb/shared/operations/InsertMany'
 import { InsertOneResponse } from '@fractaldb/shared/operations/InsertOne'
@@ -9,8 +9,8 @@ import { UpdateManyResponse } from '@fractaldb/shared/operations/UpdateMany'
 import { DeleteOneResponse } from '@fractaldb/shared/operations/DeleteOne'
 import { DeleteManyResponse } from '@fractaldb/shared/operations/DeleteMany'
 import { CountResponse } from '@fractaldb/shared/operations/Count'
-import JSONObject from '@fractaldb/shared/utils/JSONObject'
-import ObjectID from 'bson-objectid'
+import { Entity } from '@fractaldb/shared/utils/Entity'
+import { EntityID } from '@fractaldb/adn/EntityID'
 
 interface queryOption {
     projection: any
@@ -35,16 +35,14 @@ interface TransactionInterface {
 
     count(query: any): CountResponse
 
-    findByInternalID(internalID: number): Entity | null
+    findByEntityID(entityID: EntityID): Entity | null
 
     commit(): void
 
     abort(): void
 }
 
-type DocID = number // the id of a doc is a number
-type DocValue = any // the value of a doc is any (json object)
-type DocMap = Map<DocID, DocValue>
+type DocMap = Map<number, Entity>
 
 class TransactionState {
     readCache: DocMap
@@ -89,18 +87,14 @@ class TransactionState {
         this.writeDocOps.set(entity.internalID, entity)
     }
 
-    createEntity(doc: any = {}) {
-        let internalID = this.reserveID()
-        let entityID = new ObjectID().toHexString()
+    createEntity(doc: any = {}): Entity {
+        let entityID = new EntityID(this.reserveID())
 
         doc.entityID = entityID
 
-        this.writeDocOps.set(internalID, { entityID, doc })
-        return {
-            internalID,
-            entityID,
-            doc
-        }
+        this.writeDocOps.set(entityID.internalID, doc)
+        
+        return doc
     }
 
     deleteByInternalID(id: number) {
@@ -119,11 +113,11 @@ export class Transaction implements TransactionInterface {
         this.id = txID
     }
 
-    insertOne(doc: JSONObject) {
-        return this.state.createEntity(doc)
+    insertOne(doc: Entity) {
+        return this.state.createEntity(doc).entityID as EntityID
     }
 
-    insertMany(docs: JSONObject[]){ 
+    insertMany(docs: Entity[]){ 
         return {
             insertedIDs: docs.map(json => this.insertOne(json))
         }
@@ -204,8 +198,8 @@ export class Transaction implements TransactionInterface {
     }
 
 
-    findByInternalID(internalID: number) {
-        return this.store.findByInternalID(internalID)
+    findByEntityID(entityID: EntityID) {
+        return this.store.findByEntityID(entityID)
     }
     /**
      * This function commits the changes to the database

@@ -1,10 +1,10 @@
 import { UpdateOperation } from '../utils/JSONPatch'
-import JSONObject from '../utils/JSONObject'
+import { Entity } from '../utils/Entity'
 import { BaseOperation } from './BaseOperation'
 
 export interface UpdateOne extends BaseOperation {
     op: 'UpdateOne'
-    query: JSONObject
+    query: Entity
     updateOps: UpdateOperation[]
 }
 

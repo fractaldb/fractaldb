@@ -4,6 +4,7 @@ import { OperationResponse, RequestOperation } from '@fractaldb/shared/operation
 import { FractalServer } from './Server'
 import Session from './Session'
 import { randomBytes } from 'crypto'
+import { serialize, deserialize } from '@framework-tools/adn'
 
 /**
  * Generate a UUIDv4
@@ -27,7 +28,7 @@ import { InsertOneCommand } from './commands/InsertOne'
 import { StartTransactionCommand } from './commands/StartTransaction'
 import { UpdateManyCommand } from './commands/UpdateMany'
 import { CommitTransactionCommand } from './commands/CommitTransaction'
-import { splitBufferStream } from '@fractaldb/shared/utils/splitStream'
+import { splitBufferStream, DataTypes } from '@fractaldb/shared/utils/buffer'
 
 export default class ClientConnection extends EventEmitter {
     socket: Socket
@@ -46,11 +47,13 @@ export default class ClientConnection extends EventEmitter {
     }
 
     sendMessage(json: { requestID: string, response: OperationResponse}){
-        this.socket.write(Buffer.concat([Buffer.from(JSON.stringify(json)), Buffer.alloc(1, 0x00)]))
+        let serializedMessage = serialize(json).replace(/\x00|\x01/g, str => DataTypes.ESCAPECHAR + str)
+        this.socket.write(Buffer.concat([Buffer.from(serializedMessage), Buffer.alloc(1, 0x00)]))
     }
 
     async handleMessage(data: string){
-        let operation = JSON.parse(data) as RequestOperation
+        let operation = deserialize(data) as RequestOperation
+
         let response: OperationResponse
         let shouldCommit = !operation.txID // don't commit if client is managing it's own txID
 
@@ -89,7 +92,7 @@ export default class ClientConnection extends EventEmitter {
                 break
             case 'StartTransaction':
                 response = await StartTransactionCommand(operation, tx)
-                commit = false
+                shouldCommit = false
                 break
             case 'UpdateMany':
                 response = await UpdateManyCommand(operation, tx)

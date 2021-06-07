@@ -4,7 +4,9 @@ import FindOperation, { FindCommand } from './operations/FindOperation'
 import { FractalNamespace, uuidV4 } from './utils'
 import { UpdateOperation } from '@fractaldb/shared/utils/JSONPatch'
 import { Operation, OperationResponse } from '@fractaldb/shared/operations'
-import JSONObject from '@fractaldb/shared/utils/JSONObject'
+import { Entity } from '@fractaldb/shared/utils/Entity'
+import { serialize } from '@framework-tools/adn'
+import { DataTypes } from '@fractaldb/shared/utils/buffer'
 
 export default class Collection {
     name: string
@@ -26,7 +28,8 @@ export default class Collection {
 
         let responsePromise = new Promise(resolve => this.database.client.on(`response:${requestID}`, resolve))
 
-        this.socket.write(Buffer.concat([Buffer.from(JSON.stringify({...json, requestID})), Buffer.alloc(1, 0x00)]))
+        let msg = serialize({...json, requestID}).replace(/\x00|\x01/g, str => DataTypes.ESCAPECHAR + str)
+        this.socket.write(Buffer.concat([Buffer.from(msg), Buffer.alloc(1, 0x00)]))
 
         return responsePromise
     }
@@ -69,7 +72,7 @@ export default class Collection {
         })
     }
 
-    async insertOne(doc: JSONObject){
+    async insertOne(doc: Entity){
         return await this.sendMessage({
             op: 'InsertOne',
             doc

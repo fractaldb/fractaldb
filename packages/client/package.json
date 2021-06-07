@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@fractaldb/shared": "^0.0.24",
-    "@types/node": "^15.0.2"
+    "@types/node": "^15.0.2",
+    "@framework-tools/adn": "1.0.9"
   },
   "gitHead": "704fe5bb91fdd557ab74fe4c5981204d00785e18"
 }

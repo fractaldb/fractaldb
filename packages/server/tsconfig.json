@@ -7,7 +7,7 @@
     "paths": {
       "@fractaldb/shared": ["./../shared/src/"],
       "@fractaldb/shared/*": ["./../shared/src/*"],
-      "@fractaldb/adn": ["./../adn/src/"],
+      "@fractaldb/adn": ["./../adn/src/index.ts"],
       "@fractaldb/adn/*": ["./../adn/src/*"],
     }
   },

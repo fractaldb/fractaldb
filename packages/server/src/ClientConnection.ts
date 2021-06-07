@@ -52,7 +52,7 @@ export default class ClientConnection extends EventEmitter {
     async handleMessage(data: string){
         let operation = JSON.parse(data) as RequestOperation
         let response: OperationResponse
-        let commit = !operation.txID // don't commit if client is managing it's own txID
+        let shouldCommit = !operation.txID // don't commit if client is managing it's own txID
 
         let txID = operation.txID ?? uuidV4().toString()
 
@@ -99,7 +99,7 @@ export default class ClientConnection extends EventEmitter {
                 break
         }
 
-        if(commit) await tx.commit()
+        if(shouldCommit) await tx.commit()
         
         this.sendMessage({ requestID: operation.requestID, response })
     }

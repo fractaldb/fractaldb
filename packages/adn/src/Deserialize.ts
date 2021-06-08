@@ -12,8 +12,7 @@ function deserializeObject(tokenizer: Tokenizer): any {
     while(next.type !== 'NULLBYTE'){
         if(next.type == 'STRING') {
             if(['prototype', '__proto__', 'constructor'].includes(next.value)) { // prevent prototype pollution 
-                deserializeNextValue(tokenizer)
-                continue
+                throw new Error('Tried to do prototype pollution')
             }
             obj[next.value] = deserializeNextValue(tokenizer)
         } else {

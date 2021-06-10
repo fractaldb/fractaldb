@@ -1,12 +1,11 @@
 // Data ENUM bytes
 
-import { EntityID } from './EntityID'
-
 export enum DataTypes {
     EOF = '',
+    UNDEFINED = '',
     NULLBYTE = '\x00',
     OBJECT = '\x01',
-    ENTITYID = '\x02',
+    EXTENSION = '\x02',
     STRING = '\x03',
     NUMBER = '\x04',
     TRUE = '\x05',
@@ -27,16 +26,25 @@ export type Token = ObjectToken
     | EOFToken
     | NullByteToken
     | MapToken
-
-export type ValueToken = StringToken
-    | NumberToken
+    | FalseToken
+    | TrueToken
     | NullToken
-    | EntityIDToken
+    | ArrayToken
+
+export type ValueToken =
+    | StringToken
+    | NumberToken
+    | ExtensionToken
 
 // Tokens
 
 export type MapToken = {
     type: 'MAP'
+}
+
+export type ExtensionToken = {
+    type: 'EXTENSION'
+    value: any
 }
 
 export type ObjectToken = {
@@ -51,21 +59,27 @@ export type StringToken = {
     value: string
 }
 
-export type EntityIDToken = {
-    type: 'ENTITYID'
-    value: EntityID
-}
-
 export type NumberToken = {
     type: 'NUMBER'
     value: number
 }
 
 export type NullToken = {
-    type: 'NULL',
-    value: null
+    type: 'NULL'
 }
 
 export type NullByteToken = {
     type: 'NULLBYTE'
+}
+
+export type FalseToken = {
+    type: 'FALSE'
+}
+
+export type TrueToken = {
+    type: 'TRUE'
+}
+
+export type ArrayToken = {
+    type: 'ARRAY'
 }

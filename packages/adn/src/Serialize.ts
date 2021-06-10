@@ -1,57 +1,46 @@
-import { EntityID } from './EntityID'
+import { ADNExtension, SerializerFN } from 'src'
 import { DataTypes, DataTypeKeys } from './Types'
-import { toHex, toHexEscape } from './utils'
 
 function toPath(paths: string[]) {
-    return paths.join('/')
+    return '›' + paths.join('›')
 }
 
-function getType (value: any, paths: string[]): DataTypeKeys {
-    if(value === false) return 'FALSE'
-    if(value === true) return 'TRUE'
-    if(value === null) return 'NULL'
-    if(value instanceof EntityID) return 'ENTITYID'
-    if(value instanceof Map ) return 'MAP'
-    if(value instanceof Set ) return 'SET'
-    if(value instanceof Array) return 'ARRAY'
-
-    if(typeof value === 'number') return 'NUMBER'
-    if(typeof value === 'string') return 'STRING'
-    if(typeof value === 'object' && value !== null) return 'OBJECT'
-
-    throw new Error(`Could not serialise value ${toPath(paths)}: ${value}`)
+function serializeArray(array: any[], paths: string[], extensions: ADNExtension[]): string {
+    return DataTypes.ARRAY
+        + array
+            .map((val, i) => serializeValue(val, [...paths, i.toString()], extensions))
+            .filter(val => val !== undefined)
+            .join('')
+        + DataTypes.NULLBYTE
 }
 
-function serializeArray(array: any[], paths: string[]): string {
-    return DataTypes.ARRAY + array.map((val, i) => serializeValue(val, [...paths, i.toString()])).join('') + DataTypes.NULLBYTE
+function serializeObjectKey(key: string, value: any, paths: string[], extensions: ADNExtension[]){
+    if(typeof value === 'undefined') return ''
+    return serializers['STRING'](key, [...paths, key], extensions) + serializeValue(value, [...paths, key], extensions)
 }
 
-function serialiseObject(obj: any, paths: string[]): string {
+function serializeObject(obj: any, paths: string[], extensions: ADNExtension[]): string {
     return DataTypes.OBJECT + Object
         .entries(obj)
-        .map(([key, value]) => serializers['STRING'](key, [...paths, key]) + serializeValue(value, [...paths, key]))
+        .map(entries => serializeObjectKey(...entries, paths, extensions))
         .join('') + DataTypes.NULLBYTE
 }
 
-function serializeEntityID(value: EntityID) {
-    return DataTypes.ENTITYID + value.toString() + DataTypes.NULLBYTE
-}
-
-function serializeMap(value: Map<any, any>, paths: string[]) {
+function serializeMap(value: Map<any, any>, paths: string[], extensions: ADNExtension[]) {
     let str: string = DataTypes.MAP
     let entries = value.entries()
 
     for ( let [key, value] of entries) {
-        str += serializeValue(key, [...paths, `${key}`]) + serializeValue(value, [...paths, `${key}`])
+        if([key, value].includes(undefined)) continue
+        str += serializeValue(key, [...paths, `${key}`], extensions) + serializeValue(value, [...paths, `${key}`], extensions)
     }
 
     return str + DataTypes.NULLBYTE
 }
 
-const serializers: { [key in DataTypeKeys]: (value: any, path: string[]) => string } = {
+const serializers: { [key in DataTypeKeys]: SerializerFN } = {
     'ARRAY': serializeArray,
-    'OBJECT': serialiseObject,
-    'ENTITYID': serializeEntityID,
+    'OBJECT': serializeObject,
     'MAP': serializeMap,
     'SET': () => { throw new Error('Could not serialize: SET') },
     'EOF': () => DataTypes.EOF,
@@ -61,19 +50,35 @@ const serializers: { [key in DataTypeKeys]: (value: any, path: string[]) => stri
     'NULLBYTE': () => DataTypes.NULLBYTE,
     'NUMBER': (value: number) => DataTypes.NUMBER + value.toString(16) + DataTypes.NULLBYTE,
     'STRING': (value: string) => DataTypes.STRING + value.replace('\x00', DataTypes.ESCAPECHAR + '\x00') + DataTypes.NULLBYTE,
-    'ESCAPECHAR': () => DataTypes.ESCAPECHAR
+    'ESCAPECHAR': () => DataTypes.ESCAPECHAR,
+    'UNDEFINED': () => '',
+    'EXTENSION': () => DataTypes.EXTENSION
 }
 
-export default function serialize(value: any) {
-    return serializeValue(value, ['/'])
+export default function serialize(value: any, extensions: ADNExtension[]) {
+    return serializeValue(value, [], extensions)
 }
 
-function serializeValue(value: any, path: string[]) {
-    let type = getType(value, path)
+function getSerializer(value: any, paths: string[], extensions: ADNExtension[]): SerializerFN {
+    if(value === false) return serializers['FALSE']
+    if(value === true) return serializers['TRUE']
+    if(value === null) return serializers['NULL']
+    if(value instanceof Map ) return serializers['MAP']
+    if(value instanceof Set ) return serializers['SET']
+    if(value instanceof Array) return serializers['ARRAY']
+    if(typeof value === 'number') return serializers['NUMBER']
+    if(typeof value === 'string') return serializers['STRING']
+    if(typeof value === 'undefined') return serializers['UNDEFINED']
 
-    let serializer = serializers[type]
+    let extension = extensions.find(extension => extension.isType(value)) as ADNExtension
 
-    if(serializer) return serializer(value, path)
+    if(extension) return (...args) => DataTypes.EXTENSION + extension.signifier + extension.serialize(...args) + DataTypes.NULLBYTE
 
-    throw new Error('Could not find serializer')
+    if(typeof value === 'object' && value !== null) return serializers['OBJECT']
+
+    throw new Error(`Could not serialise value ${toPath(paths)}: ${value}`)
+}
+
+function serializeValue(value: any, paths: string[], extensions: ADNExtension[]): string {
+    return getSerializer(value, paths, extensions)(value, paths, extensions)
 }

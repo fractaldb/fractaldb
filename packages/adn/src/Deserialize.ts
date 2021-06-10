@@ -1,12 +1,12 @@
 
 // need deserialise function for each data type
+import { ADNExtension } from 'src'
 import { Tokenizer } from './Tokenizer'
-import { DataTypeKeys, Token, NumberToken, StringToken, EntityIDToken } from './Types'
+import { DataTypeKeys, Token, NumberToken, StringToken, ExtensionToken } from './Types'
 
 function deserializeObject(tokenizer: Tokenizer): any {
     let obj: any = Object.create(null) // prevent prototype pollution
     Object.freeze(obj.prototype) // prevent prototype pollution
-
 
     let next = tokenizer.next()
     while(next.type !== 'NULLBYTE'){
@@ -27,17 +27,15 @@ function deserializeObject(tokenizer: Tokenizer): any {
 function deserializeArray(tokenizer: Tokenizer): any[] {
     let arr: any[] = []
 
-    let next = tokenizer.next()
-    while(next.type !== 'NULLBYTE'){
+    let peek = tokenizer.peek()
+    while(peek.type !== 'NULLBYTE'){
         arr.push(deserializeNextValue(tokenizer))
-        next = tokenizer.next()
+        peek = tokenizer.peek()
     }
 
-    return arr
-}
+    tokenizer.next() // skip NULLBYTE
 
-function deserializeEntityID (tokenizer: Tokenizer, value: Token) {
-    return (value as EntityIDToken).value
+    return arr
 }
 
 function deserializeMap(tokenizer: Tokenizer, value: Token) {
@@ -48,23 +46,26 @@ function deserializeMap(tokenizer: Tokenizer, value: Token) {
         peek = tokenizer.peek()
     }
 
+    tokenizer.next() // skip NULLBYTE
+
     return new Map(entries)
 }
 
-const deserializers: { [key in DataTypeKeys]: (tokenizer: Tokenizer, value: Token) => any } = {
+const deserializers: { [key in DataTypeKeys]: (tokenizer: Tokenizer, token: Token) => any } = {
     'ARRAY': deserializeArray,
     'OBJECT': deserializeObject,
-    'ENTITYID': deserializeEntityID,
     'MAP': deserializeMap,
-    'SET': () => { throw new Error('Could not serialize: SET') }, //TODO
-    'EOF': () => { throw new Error('Could not serialize: EOF') }, //TODO
+    'SET': () => { throw new Error('Could not deserialize: SET') }, //TODO
+    'EOF': () => undefined,
+    'UNDEFINED': () => { throw new Error('Could not deserialize: UNDEFINED') },
     'FALSE': () => false,
     'TRUE': () => true,
     'NULL': () => null,
-    'NUMBER': (tokenizer: Tokenizer, value: Token) => (value as NumberToken).value,
-    'STRING': (tokenizer: Tokenizer, value: Token) => (value as StringToken).value,
-    'NULLBYTE': () => { throw new Error('Cannot deserialise a NULLBYTE') },
-    'ESCAPECHAR': () => { throw new Error('Cannot deserialise a ESCAPECHAR') },
+    'NUMBER': (tokenizer: Tokenizer, token: Token) => (token as NumberToken).value,
+    'STRING': (tokenizer: Tokenizer, token: Token) => (token as StringToken).value,
+    'NULLBYTE': () => { throw new Error('Cannot deserialize a NULLBYTE') },
+    'ESCAPECHAR': () => { throw new Error('Cannot deserialize a ESCAPECHAR') },
+    'EXTENSION': (tokenizer, token) => (token as ExtensionToken).value
 }
 
 function deserializeNextValue(tokenizer: Tokenizer){
@@ -82,8 +83,8 @@ function deserializeNextValue(tokenizer: Tokenizer){
  * 
  * @param str ADN serialized string
  */
-export default function deserialize(str: string) {
-    let tokenizer = new Tokenizer(str)
+export default function deserialize(str: string, extensionsMap: {[key: string]: ADNExtension}) {
+    let tokenizer = new Tokenizer(str, extensionsMap)
     
     return deserializeNextValue(tokenizer)
 }

@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "build": "npm run clean && npm run compile",
-    "clean": "rimraf -rf ./dist",
+    "clean": "rimraf -rf ./dist && rimraf ./tsconfig.tsbuildinfo",
     "watch": "tsc -w",
     "compile": "tsc",
     "prepublishOnly": "npm run compile",

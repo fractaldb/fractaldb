@@ -34,13 +34,13 @@
   },
   "scripts": {
     "build": "npm run clean && npm run compile",
-    "clean": "rimraf -rf ./dist",
+    "clean": "rimraf -rf ./dist && rimraf ./tsconfig.tsbuildinfo",
     "watch": "tsc -w",
     "compile": "tsc",
     "prepublishOnly": "npm run compile",
     "test": "jest"
   },
-  "gitHead": "3f2b373b5d47b30230f014c929f1e20ec6d7edad",
+  "gitHead": "5639e26f128878c1ef18339377d7dc1cf15fe43c",
   "publishConfig": {
     "access": "public"
   }

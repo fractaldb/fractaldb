@@ -20,5 +20,5 @@
     "@fractaldb/shared": "^0.2.0",
     "@types/node": "^15.0.2"
   },
-  "gitHead": "5639e26f128878c1ef18339377d7dc1cf15fe43c"
+  "gitHead": "8b23cdecd810cd5cdbab230388bf6ff57c9d143f"
 }

@@ -10,11 +10,15 @@
       "@fractaldb/fractal-server": ["./../server/src/"],
       "@fractaldb/fractal-server/*": ["./../server/src/*"],
       "@fractaldb/fractal-client": ["./../client/src/"],
-      "@fractaldb/fractal-client/*": ["./../client/src/*"]
+      "@fractaldb/fractal-client/*": ["./../client/src/*"],
+      "@fractaldb/adn": ["./../adn/src/index.ts"],
+      "@fractaldb/adn/*": ["./../adn/src/*"],
     }
   },
   "references": [
     { "path": "../client" },
-    { "path": "../server" }
+    { "path": "../server" },
+    { "path": "../shared" },
+    { "path": "../adn" }
   ]
 }

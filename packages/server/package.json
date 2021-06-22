@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/fractal-server",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "main": "dist/index",
   "types": "dist/index",
   "type": "commonjs",
@@ -16,8 +16,8 @@
     "test": "npm run build"
   },
   "dependencies": {
-    "@fractaldb/adn": "^0.1.4",
-    "@fractaldb/shared": "^0.1.3",
+    "@fractaldb/adn": "^0.2.0",
+    "@fractaldb/shared": "^0.2.0",
     "@types/node": "^15.0.2"
   },
   "gitHead": "5639e26f128878c1ef18339377d7dc1cf15fe43c"

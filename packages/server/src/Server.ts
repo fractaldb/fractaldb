@@ -16,7 +16,7 @@ export class FractalServer extends EventEmitter {
     store: DocStore
     adn: ADN
 
-    constructor(config: Config){
+    constructor(config: Config = { ADNextensions: []}){
         super()
         
         this.connections = new Set()

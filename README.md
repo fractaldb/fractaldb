@@ -1,3 +1,14 @@
+# FractalDB
+## Contributing
+### Setup
+
+```
+npm i -g lerna
+lerna bootstrap
+```
+
+<!--suppress HtmlDeprecatedAttribute -->
+<div align="center">
 
 ## Installation
 

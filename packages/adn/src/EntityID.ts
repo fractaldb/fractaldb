@@ -52,7 +52,7 @@ export class EntityID {
     }
 
     [util.inspect.custom] () {
-        return process.stdout?.hasColors()
+        return process.stdout?.hasColors?.()
             ? COLORS.Bright + COLORS.Magenta + `EntityID ` + COLORS.White + `[` + COLORS.Magenta + this.toString() + COLORS.White + `]` + COLORS.Reset
             : `EntityID [${this.toString()}]`
     }

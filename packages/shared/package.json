@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/shared",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "commonjs",
   "exports": {
     ".": "./dist/index.js",
@@ -15,7 +15,7 @@
     "test": "npm run build"
   },
   "dependencies": {
-    "@fractaldb/adn": "^0.2.3",
+    "@fractaldb/adn": "^0.2.4",
     "@types/node": "^15.12.4"
   },
   "gitHead": "5171c8b2e6bce4dff5d32ce03168d032019fd558"

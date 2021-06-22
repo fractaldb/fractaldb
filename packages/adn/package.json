@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/adn",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "",
   "type": "commonjs",
   "exports": {
@@ -38,10 +38,10 @@
     "clean": "rimraf -rf ./dist && rimraf ./tsconfig.tsbuildinfo",
     "watch": "tsc -w",
     "compile": "tsc",
-    "prepublishOnly": "npm run compile",
+    "prepublishOnly": "npm run build",
     "test": "jest"
   },
-  "gitHead": "5171c8b2e6bce4dff5d32ce03168d032019fd558",
+  "gitHead": "7d986ba599dc0014b81e473d076b504dbca27cd6",
   "publishConfig": {
     "access": "public"
   }

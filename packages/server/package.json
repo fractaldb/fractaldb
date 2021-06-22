@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/fractal-server",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "main": "dist/index",
   "types": "dist/index",
   "type": "commonjs",
@@ -12,13 +12,13 @@
     "clean": "rimraf -rf ./dist && rimraf ./tsconfig.tsbuildinfo",
     "watch": "tsc -w",
     "compile": "tsc",
-    "prepublishOnly": "npm run compile",
+    "prepublishOnly": "npm run build",
     "test": "npm run build"
   },
   "dependencies": {
-    "@fractaldb/adn": "^0.2.5",
-    "@fractaldb/shared": "^0.2.5",
+    "@fractaldb/adn": "^0.2.6",
+    "@fractaldb/shared": "^0.2.6",
     "@types/node": "^15.0.2"
   },
-  "gitHead": "5171c8b2e6bce4dff5d32ce03168d032019fd558"
+  "gitHead": "7d986ba599dc0014b81e473d076b504dbca27cd6"
 }

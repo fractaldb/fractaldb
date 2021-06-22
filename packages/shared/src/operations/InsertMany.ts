@@ -1,6 +1,6 @@
 import { Entity } from '../utils/Entity'
-import { EntityID } from '@framework-tools/adn/EntityID'
 import { BaseOperation } from './BaseOperation'
+import { EntityID } from '@fractaldb/adn/EntityID'
 
 export interface InsertMany extends BaseOperation {
     op: 'InsertMany'

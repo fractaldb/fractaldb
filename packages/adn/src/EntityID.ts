@@ -1,5 +1,8 @@
 import ObjectID from 'bson-objectid'
+import { ADNExtension } from './index'
 import util from 'util'
+import { Tokenizer } from './Tokenizer'
+import { DataTypes } from './Types'
 
 const COLORS = {
     Reset: "\x1b[0m",
@@ -56,5 +59,22 @@ export class EntityID {
 
     toString(): string {
         return this.internalID.toString(16) + '|' + this.objectID.toHexString()
+    }
+}
+
+export class EntityIDExtension extends ADNExtension {
+    isType(val: any) {
+        return val instanceof EntityID
+    }
+    serialize(val: EntityID, path: string[]) {
+        return val.toString()
+    }
+
+    deserialize(tokenizer: Tokenizer) {
+        function is_not_nullbyte(ch: string): boolean {
+            return ch !== DataTypes.NULLBYTE
+        }
+
+        return new EntityID(tokenizer.read_until(is_not_nullbyte))
     }
 }

@@ -1,7 +1,5 @@
-import { EntityID } from '../src/EntityID'
-import { Tokenizer } from '../src/Tokenizer'
-import { DataTypes } from '../src/Types'
-import { ADN, ADNExtension } from '../src/index'
+import { EntityID, EntityIDExtension } from '../src/EntityID'
+import { ADN } from '../src/index'
 
 const adn = new ADN([])
 
@@ -144,22 +142,7 @@ describe('can serialise maps', () => {
 
 describe('add custom serialization/deserialization entity', () => {
     test('can handle entityID extension', () => {
-        class EntityIDExtension extends ADNExtension {
-            isType(val: any) {
-                return val instanceof EntityID
-            }
-            serialize(val: EntityID, path: string[]) {
-                return val.toString()
-            }
         
-            deserialize(tokenizer: Tokenizer) {
-                function is_not_nullbyte(ch: string): boolean {
-                    return ch !== DataTypes.NULLBYTE
-                }
-        
-                return new EntityID(tokenizer.read_until(is_not_nullbyte))
-            }
-        }
     
         let adn = new ADN([
             new EntityIDExtension('\x01')

@@ -3,7 +3,8 @@
 ### Setup
 
 ```
-npm i -g lerna
+npm i -g lerna jest tsc rimraf
+lerna link
 lerna bootstrap
 ```
 

@@ -11,6 +11,7 @@
     "dist"
   ],
   "dependencies": {
+    "@types/node": "^15.12.4",
     "bson-objectid": "^2.0.1"
   },
   "devDependencies": {

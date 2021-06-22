@@ -4,8 +4,11 @@
     "rootDir": "src",
     "outDir": "dist",
     "paths": {
-      "@framework-tools/adn": ["./node_modules/@framework-tools/adn/dist/index"],
-      "@framework-tools/adn/*": ["./node_modules/@framework-tools/adn/dist/*"]
+      "@fractaldb/adn": ["./../adn/src/index.ts"],
+      "@fractaldb/adn/*": ["./../adn/src/*"],
     }
-  }
+  },
+  "references": [
+    { "path": "../adn" },
+  ]
 }

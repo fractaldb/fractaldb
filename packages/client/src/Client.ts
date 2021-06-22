@@ -6,25 +6,30 @@ import Collection from './Collection'
 import Cursor from './Cursor'
 import Database from './Database'
 import { ClientSession } from './Session'
-import { deserialize } from '@framework-tools/adn'
+import { ADN, ADNExtension } from '@fractaldb/adn'
+import { EntityIDExtension } from '@fractaldb/adn/EntityID'
 
 type FractalClientOptions = {
     host: string
     port: number
+    ADNExtensions: ADNExtension[]
 }
 
 export class FractalClient extends EventEmitter {
     socket: Socket
     state: FractalClientState = new FractalClientState()
+    adn: ADN
 
-    constructor({ port, host }: FractalClientOptions = { port: 24000, host: 'localhost'}){
+    constructor({ port, host, ADNExtensions }: FractalClientOptions = { port: 24000, host: 'localhost', ADNExtensions: []}){
         super()
 
+        ADNExtensions.push(new EntityIDExtension('\x01'))
+        this.adn = new ADN(ADNExtensions)
         this.socket = net.createConnection({ port, host })
         this.socket.setNoDelay(false)
 
         let bufferStream = splitBufferStream(str => {
-            let obj = deserialize(str)
+            let obj = this.adn.deserialize(str)
             let requestID = obj.requestID
             this.emit(`response:${requestID}`, obj.response)
         })

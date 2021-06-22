@@ -12,13 +12,13 @@ npm i @framework-tools/adn
 ## Usage
 
 ```js
-import { serialize, deserialize } from '@framework-tools/adn'
-
+import { ADN } from '@fractaldb/adn'
+let adn = new ADN()
 let obj = {
     hello: 'world'
 }
 
-console.log(deserialize(serialize(obj)))
+console.log(adn.deserialize(adn.serialize(obj)))
 ```
 
 

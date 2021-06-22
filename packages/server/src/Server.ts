@@ -3,17 +3,27 @@ import EventEmitter from 'events'
 import ClientConnection from './ClientConnection'
 import { DocStore } from './db/DocStore'
 import { Transaction } from './db/Transaction'
+import { ADN, ADNExtension } from '@fractaldb/adn'
+import { EntityIDExtension } from '@fractaldb/adn/EntityID'
+
+interface Config {
+    ADNextensions: ADNExtension[]
+}
 
 export class FractalServer extends EventEmitter {
     server: Server
     connections: Set<ClientConnection>
     store: DocStore
+    adn: ADN
 
-    constructor(){
+    constructor(config: Config){
         super()
         
         this.connections = new Set()
 
+        config.ADNextensions.push(new EntityIDExtension('\x01'))
+
+        this.adn = new ADN(config.ADNextensions)
         this.server = net.createServer()
         this.store = new DocStore(new Map())
         this.server.on('connection', socket => this.newConnection(socket))

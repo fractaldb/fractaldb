@@ -4,7 +4,6 @@ import { OperationResponse, RequestOperation } from '@fractaldb/shared/operation
 import { FractalServer } from './Server'
 import Session from './Session'
 import { randomBytes } from 'crypto'
-import { serialize, deserialize } from '@framework-tools/adn'
 
 /**
  * Generate a UUIDv4
@@ -47,12 +46,12 @@ export default class ClientConnection extends EventEmitter {
     }
 
     sendMessage(json: { requestID: string, response: OperationResponse}){
-        let serializedMessage = serialize(json).replace(/\x00|\x01/g, str => DataTypes.ESCAPECHAR + str)
+        let serializedMessage = this.server.adn.serialize(json).replace(/\x00|\x01/g, (str: string) => DataTypes.ESCAPECHAR + str)
         this.socket.write(Buffer.concat([Buffer.from(serializedMessage), Buffer.alloc(1, 0x00)]))
     }
 
     async handleMessage(data: string){
-        let operation = deserialize(data) as RequestOperation
+        let operation = this.server.adn.deserialize(data) as RequestOperation
 
         let response: OperationResponse
         let shouldCommit = !operation.txID // don't commit if client is managing it's own txID

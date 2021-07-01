@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/fractal-client",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
@@ -28,8 +28,8 @@
     "test": "npm run build"
   },
   "dependencies": {
-    "@fractaldb/adn": "^0.2.12",
-    "@fractaldb/shared": "^0.2.12",
+    "@fractaldb/adn": "^0.2.13",
+    "@fractaldb/shared": "^0.2.13",
     "@types/jest": "^26.0.23",
     "@types/node": "^15.0.2"
   },

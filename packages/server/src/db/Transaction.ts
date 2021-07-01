@@ -17,13 +17,13 @@ interface queryOption {
     sort: any
 }
 
-interface TransactionInterface {  
+interface TransactionInterface {
 
     id: string //tx ID
 
     findOne(query: any, options?: queryOption): Entity | null
     findMany(query: any, options?: queryOption): Entity[]
-    
+
     insertOne(doc: any, options?: queryOption): InsertOneResponse
     insertMany(doc: any[], options?: queryOption): InsertManyResponse
 
@@ -69,16 +69,12 @@ class TransactionState {
     findOne(query: any): Entity | null {
         // add indexing here currently O(log n)
         let iter = this.writeDocOps.entries()
-        for (const [internalID, { entityID, doc }] of iter) {
+        for (const [internalID, doc] of iter) {
             for (const prop in query) {
                 if (doc[prop] !== query[prop]) continue
             }
 
-            return {
-                internalID,
-                entityID,
-                doc
-            }
+            return doc
         }
         return this.store.findOne(query)
     }
@@ -93,7 +89,7 @@ class TransactionState {
         doc.entityID = entityID
 
         this.writeDocOps.set(entityID.internalID, doc)
-        
+
         return doc
     }
 
@@ -117,7 +113,7 @@ export class Transaction implements TransactionInterface {
         return this.state.createEntity(doc).entityID as EntityID
     }
 
-    insertMany(docs: Entity[]){ 
+    insertMany(docs: Entity[]){
         return {
             insertedIDs: docs.map(json => this.insertOne(json))
         }
@@ -163,31 +159,31 @@ export class Transaction implements TransactionInterface {
             let i = 0, len = updateOps.length
             while(i < len){
                 let op = updateOps[i++]
-                
+
                 entity.doc = apply(JSON.parse(JSON.stringify(entity.doc)), op)
                 this.state.updateEntity(entity)
             }
             updatedCount++
         }
-        
+
         return { updatedCount }
     }
 
     updateMany(query: any, updateOps: UpdateOperation[], options?: queryOption) {
         let entities = this.findMany(query)
         let updatedCount = 0
-        
-        entities.map(entity => { 
+
+        entities.map(entity => {
             let i = 0, len = updateOps.length
             while(i < len){
                 let op = updateOps[i++]
-                
+
                 entity.doc = apply(JSON.parse(JSON.stringify(entity.doc)), op)
                 this.state.updateEntity(entity)
             }
             updatedCount++
         })
-        
+
         return { updatedCount }
     }
 

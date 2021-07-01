@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/testing",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "main": "dist/index",
   "types": "dist/index",
   "private": true,
@@ -17,8 +17,8 @@
     "test": "npm run build"
   },
   "dependencies": {
-    "@fractaldb/fractal-client": "^0.2.7",
-    "@fractaldb/fractal-server": "^0.2.7",
+    "@fractaldb/fractal-client": "^0.2.8",
+    "@fractaldb/fractal-server": "^0.2.8",
     "@types/jest": "^26.0.23",
     "@types/node": "^15.0.2"
   },

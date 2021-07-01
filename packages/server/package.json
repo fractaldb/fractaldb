@@ -1,9 +1,22 @@
 {
   "name": "@fractaldb/fractal-server",
-  "version": "0.2.7",
-  "main": "dist/index",
-  "types": "dist/index",
+  "version": "0.2.8",
   "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*"
+  },
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "./dist/index.d.ts": [
+        "./dist/index.d.ts"
+      ],
+      "*": [
+        "dist/*"
+      ]
+    }
+  },
   "files": [
     "dist"
   ],
@@ -36,8 +49,8 @@
     }
   },
   "dependencies": {
-    "@fractaldb/adn": "^0.2.7",
-    "@fractaldb/shared": "^0.2.7",
+    "@fractaldb/adn": "^0.2.8",
+    "@fractaldb/shared": "^0.2.8",
     "@framework-tools/catchit": "^1.0.5",
     "@types/jest": "^26.0.23",
     "@types/node": "^15.0.2",

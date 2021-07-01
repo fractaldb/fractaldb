@@ -5,8 +5,7 @@ import { Tokenizer } from './Tokenizer.js'
 import { DataTypeKeys, Token, NumberToken, StringToken, ExtensionToken } from './Types.js'
 
 function deserializeObject(tokenizer: Tokenizer): any {
-    let obj: any = Object.create(null) // prevent prototype pollution
-    Object.freeze(obj.prototype) // prevent prototype pollution
+    let obj: any = {}
 
     let next = tokenizer.next()
     while(next.type !== 'NULLBYTE'){

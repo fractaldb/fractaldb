@@ -1,8 +1,8 @@
 import { Socket } from 'net'
 import EventEmitter from 'events'
-import { OperationResponse, RequestOperation } from '@fractaldb/shared/operations'
-import { FractalServer } from './Server'
-import Session from './Session'
+import { OperationResponse, RequestOperation } from '@fractaldb/shared/operations/index.js'
+import { FractalServer } from './Server.js'
+import Session from './Session.js'
 import { randomBytes } from 'crypto'
 
 /**
@@ -15,19 +15,19 @@ import { randomBytes } from 'crypto'
     return result
 }
 
-import { AbortTransactionCommand } from './commands/AbortTransaction'
-import { UpdateOneCommand } from './commands/UpdateOne'
-import { FindOneCommand } from './commands/FindOne'
-import { CountCommand } from './commands/Count'
-import { DeleteManyCommand } from './commands/DeleteMany'
-import { DeleteOneCommand } from './commands/DeleteOne'
-import { FindManyCommand } from './commands/FindMany'
-import { InsertManyCommand } from './commands/InsertMany'
-import { InsertOneCommand } from './commands/InsertOne'
-import { StartTransactionCommand } from './commands/StartTransaction'
-import { UpdateManyCommand } from './commands/UpdateMany'
-import { CommitTransactionCommand } from './commands/CommitTransaction'
-import { splitBufferStream, DataTypes } from '@fractaldb/shared/utils/buffer'
+import { AbortTransactionCommand } from './commands/AbortTransaction.js'
+import { UpdateOneCommand } from './commands/UpdateOne.js'
+import { FindOneCommand } from './commands/FindOne.js'
+import { CountCommand } from './commands/Count.js'
+import { DeleteManyCommand } from './commands/DeleteMany.js'
+import { DeleteOneCommand } from './commands/DeleteOne.js'
+import { FindManyCommand } from './commands/FindMany.js'
+import { InsertManyCommand } from './commands/InsertMany.js'
+import { InsertOneCommand } from './commands/InsertOne.js'
+import { StartTransactionCommand } from './commands/StartTransaction.js'
+import { UpdateManyCommand } from './commands/UpdateMany.js'
+import { CommitTransactionCommand } from './commands/CommitTransaction.js'
+import { splitBufferStream, DataTypes } from '@fractaldb/shared/utils/buffer.js'
 
 export default class ClientConnection extends EventEmitter {
     socket: Socket
@@ -102,7 +102,7 @@ export default class ClientConnection extends EventEmitter {
         }
 
         if(shouldCommit) await tx.commit()
-        
+
         this.sendMessage({ requestID: operation.requestID, response })
     }
 }

@@ -1,3 +1,3 @@
-import { FractalServer } from './Server'
+import { FractalServer } from './Server.js'
 
 export { FractalServer }

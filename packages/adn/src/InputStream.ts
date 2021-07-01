@@ -1,4 +1,4 @@
-import { DataTypes } from './Types'
+import { DataTypes } from './Types.js'
 
 
 class InputError extends Error {

@@ -1,7 +1,7 @@
 import EventEmitter from 'events'
-import { FractalClient, SessionPool } from './Client'
-import Cursor from './Cursor'
-import Transaction from './Transaction'
+import { FractalClient, SessionPool } from './Client.js'
+import Cursor from './Cursor.js'
+import Transaction from './Transaction.js'
 
 type ClientSessionOptions = {
     owner: Cursor
@@ -19,7 +19,7 @@ export class ClientSession extends EventEmitter {
         this.owner = options.owner
 
         this.client = client
-        
+
         this.transaction = new Transaction()
     }
 }

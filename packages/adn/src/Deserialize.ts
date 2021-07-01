@@ -1,8 +1,8 @@
 
 // need deserialise function for each data type
 import { ADNExtension } from 'src'
-import { Tokenizer } from './Tokenizer'
-import { DataTypeKeys, Token, NumberToken, StringToken, ExtensionToken } from './Types'
+import { Tokenizer } from './Tokenizer.js'
+import { DataTypeKeys, Token, NumberToken, StringToken, ExtensionToken } from './Types.js'
 
 function deserializeObject(tokenizer: Tokenizer): any {
     let obj: any = Object.create(null) // prevent prototype pollution
@@ -11,7 +11,7 @@ function deserializeObject(tokenizer: Tokenizer): any {
     let next = tokenizer.next()
     while(next.type !== 'NULLBYTE'){
         if(next.type == 'STRING') {
-            if(['prototype', '__proto__', 'constructor'].includes(next.value)) { // prevent prototype pollution 
+            if(['prototype', '__proto__', 'constructor'].includes(next.value)) { // prevent prototype pollution
                 throw new Error('Tried to do prototype pollution')
             }
             obj[next.value] = deserializeNextValue(tokenizer)
@@ -80,11 +80,11 @@ function deserializeNextValue(tokenizer: Tokenizer){
 
 /**
  * Deserialise an ADN serialized string
- * 
+ *
  * @param str ADN serialized string
  */
 export default function deserialize(str: string, extensionsMap: {[key: string]: ADNExtension}) {
     let tokenizer = new Tokenizer(str, extensionsMap)
-    
+
     return deserializeNextValue(tokenizer)
 }

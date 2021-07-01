@@ -1,4 +1,4 @@
-import { BaseOperation } from './BaseOperation'
+import { BaseOperation } from './BaseOperation.js'
 
 export interface AbortTransaction extends BaseOperation {
     txID: string

@@ -1,5 +1,5 @@
-import { ADNExtension, SerializerFN } from 'src'
-import { DataTypes, DataTypeKeys } from './Types'
+import { ADNExtension, SerializerFN } from './index.js'
+import { DataTypes, DataTypeKeys } from './Types.js'
 
 function toPath(paths: string[]) {
     return '›' + paths.join('›')

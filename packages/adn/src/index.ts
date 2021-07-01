@@ -1,6 +1,6 @@
-import deserialize from './Deserialize'
-import serialize from './Serialize'
-import { Tokenizer } from './Tokenizer'
+import deserialize from './Deserialize.js'
+import serialize from './Serialize.js'
+import { Tokenizer } from './Tokenizer.js'
 
 type ADNExtensionMap = { [key: string]: ADNExtension }
 

@@ -1,6 +1,6 @@
-import { Entity } from '../utils/Entity'
-import { BaseOperation } from './BaseOperation'
-import { EntityID } from '@fractaldb/adn/EntityID'
+import { Entity } from '../utils/Entity.js'
+import { BaseOperation } from './BaseOperation.js'
+import { EntityID } from '@fractaldb/adn/EntityID.js'
 
 export interface InsertOne extends BaseOperation {
     op: 'InsertOne'

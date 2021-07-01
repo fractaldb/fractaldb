@@ -16,8 +16,8 @@ describe('docs', () => {
         let col = client.db('main').collection('items')
         await col.insertOne(doc)
         let { entity } = await col.findOne({});
-        let entityID = entity.entityID
-        delete entity['entityID']
+        let entityID = entity?.entityID
+        if(entity) delete entity['entityID']
         expect(entity).toBe(doc)
         expect(entityID instanceof EntityID).toBe(true)
     })

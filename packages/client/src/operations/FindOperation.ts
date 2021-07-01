@@ -1,7 +1,7 @@
-import { FractalClient } from '../Client'
-import Collection from '../Collection'
-import { FractalNamespace } from '../utils'
-import OperationBase, { OperationOptions } from './OperationBase'
+import { FractalClient } from '../Client.js'
+import Collection from '../Collection.js'
+import { FractalNamespace } from '../utils.js'
+import OperationBase, { OperationOptions } from './OperationBase.js'
 
 export type FindCommand = {
     projection?: any

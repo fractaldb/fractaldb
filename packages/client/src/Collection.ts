@@ -1,12 +1,12 @@
-import Database from './Database'
-import Cursor from './Cursor'
-import FindOperation, { FindCommand } from './operations/FindOperation'
-import { FractalNamespace, uuidV4 } from './utils'
-import { UpdateOperation } from '@fractaldb/shared/utils/JSONPatch'
-import { Operation, OperationResponse } from '@fractaldb/shared/operations'
-import { Entity } from '@fractaldb/shared/utils/Entity'
-import { DataTypes } from '@fractaldb/shared/utils/buffer'
-import { FindOneResponse } from '@fractaldb/shared/operations/FindOne'
+import Database from './Database.js'
+import Cursor from './Cursor.js'
+import FindOperation, { FindCommand } from './operations/FindOperation.js'
+import { FractalNamespace, uuidV4 } from './utils.js'
+import { UpdateOperation } from '@fractaldb/shared/utils/JSONPatch.js'
+import { Operation, OperationResponse } from '@fractaldb/shared/operations/index.js'
+import { Entity } from '@fractaldb/shared/utils/Entity.js'
+import { DataTypes } from '@fractaldb/shared/utils/buffer.js'
+import { FindOneResponse } from '@fractaldb/shared/operations/FindOne.js'
 
 export default class Collection {
     name: string

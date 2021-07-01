@@ -1,8 +1,8 @@
 import ObjectID from 'bson-objectid'
-import { ADNExtension } from './index'
+import { ADNExtension } from './index.js'
 import util from 'util'
-import { Tokenizer } from './Tokenizer'
-import { DataTypes } from './Types'
+import { Tokenizer } from './Tokenizer.js'
+import { DataTypes } from './Types.js'
 
 const COLORS = {
     Reset: "\x1b[0m",
@@ -12,7 +12,7 @@ const COLORS = {
     Blink:"\x1b[5m",
     Reverse:"\x1b[7m",
     Hidden:"\x1b[8m",
-    
+
     Black:"\x1b[30m",
     Red:"\x1b[31m",
     Green:"\x1b[32m",
@@ -25,14 +25,14 @@ const COLORS = {
 
 /**
  * EntityID
- * 
+ *
  * examples
  *  - '01|507f1f77bcf86cd799439011'
  */
 export class EntityID {
     internalID: number
     objectID: ObjectID
-    
+
     /**
      * Generate a new EntityID and generate an associated ObjectID with the given internal ID
      */

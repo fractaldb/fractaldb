@@ -1,15 +1,15 @@
-import { AbortTransaction, AbortTransactionResponse } from './AbortTransaction'
-import { CommitTransaction, CommitTransactionResponse } from './CommitTransaction'
-import { Count, CountResponse } from './Count'
-import { DeleteMany, DeleteManyResponse } from './DeleteMany'
-import { DeleteOne, DeleteOneResponse } from './DeleteOne'
-import { FindMany, FindManyResponse, FindManyMore, FindManyMoreResponse } from './FindMany'
-import { FindOne, FindOneResponse } from './FindOne'
-import { InsertMany, InsertManyResponse } from './InsertMany'
-import { InsertOne, InsertOneResponse } from './InsertOne'
-import { StartTransaction, StartTransactionResponse } from './StartTransaction'
-import { UpdateMany, UpdateManyResponse } from './UpdateMany'
-import { UpdateOne, UpdateOneResponse } from './UpdateOne'
+import { AbortTransaction, AbortTransactionResponse } from './AbortTransaction.js'
+import { CommitTransaction, CommitTransactionResponse } from './CommitTransaction.js'
+import { Count, CountResponse } from './Count.js'
+import { DeleteMany, DeleteManyResponse } from './DeleteMany.js'
+import { DeleteOne, DeleteOneResponse } from './DeleteOne.js'
+import { FindMany, FindManyResponse, FindManyMore, FindManyMoreResponse } from './FindMany.js'
+import { FindOne, FindOneResponse } from './FindOne.js'
+import { InsertMany, InsertManyResponse } from './InsertMany.js'
+import { InsertOne, InsertOneResponse } from './InsertOne.js'
+import { StartTransaction, StartTransactionResponse } from './StartTransaction.js'
+import { UpdateMany, UpdateManyResponse } from './UpdateMany.js'
+import { UpdateOne, UpdateOneResponse } from './UpdateOne.js'
 
 
 // export type {
@@ -27,7 +27,7 @@ import { UpdateOne, UpdateOneResponse } from './UpdateOne'
 //     UpdateMany
 // }
 
-export type Operation = 
+export type Operation =
     | AbortTransaction
     | CommitTransaction
     | StartTransaction

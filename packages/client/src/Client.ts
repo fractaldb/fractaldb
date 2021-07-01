@@ -1,9 +1,9 @@
 import net, { Socket } from 'net'
 import EventEmitter from 'events'
-import { Operation } from '@fractaldb/shared/operations'
-import { splitBufferStream } from '@fractaldb/shared/utils/buffer'
-import Database from './Database'
-import { ClientSession } from './Session'
+import { Operation } from '@fractaldb/shared/operations/index.js'
+import { splitBufferStream } from '@fractaldb/shared/utils/buffer.js'
+import Database from './Database.js'
+import { ClientSession } from './Session.js'
 import { ADN, ADNExtension } from '@fractaldb/adn'
 import { EntityIDExtension } from '@fractaldb/adn/EntityID.js'
 

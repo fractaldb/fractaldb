@@ -1,4 +1,4 @@
-import { ClientSession } from '../Session'
+import { ClientSession } from '../Session.js'
 
 export type OperationOptions = {
     session?: ClientSession

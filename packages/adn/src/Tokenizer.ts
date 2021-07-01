@@ -1,7 +1,7 @@
 import { ADNExtension } from 'src'
-import { EntityID } from './EntityID'
-import { InputStream } from './InputStream'
-import { Token, DataTypes, ExtensionToken } from './Types'
+import { EntityID } from './EntityID.js'
+import { InputStream } from './InputStream.js'
+import { Token, DataTypes, ExtensionToken } from './Types.js'
 
 export function is_not_nullbyte(ch: string): boolean {
     return ch !== DataTypes.NULLBYTE
@@ -39,7 +39,7 @@ export class Tokenizer {
                 value: this.read_until(is_not_nullbyte)
             }
 
-            case DataTypes.EXTENSION: return { 
+            case DataTypes.EXTENSION: return {
                 type: 'EXTENSION',
                 value: this.extensions[inputStream.peek()].deserialize(this, inputStream.next())
             }

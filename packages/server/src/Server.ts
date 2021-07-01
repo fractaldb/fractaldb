@@ -1,10 +1,10 @@
 import net, { Server, Socket } from 'net'
 import EventEmitter from 'events'
-import ClientConnection from './ClientConnection'
-import { DocStore } from './db/DocStore'
-import { Transaction } from './db/Transaction'
+import ClientConnection from './ClientConnection.js'
+import { DocStore } from './db/DocStore.js'
+import { Transaction } from './db/Transaction.js'
 import { ADN, ADNExtension } from '@fractaldb/adn'
-import { EntityIDExtension } from '@fractaldb/adn/EntityID'
+import { EntityIDExtension } from '@fractaldb/adn/EntityID.js'
 
 interface Config {
     ADNextensions: ADNExtension[]
@@ -18,7 +18,7 @@ export class FractalServer extends EventEmitter {
 
     constructor(config: Config = { ADNextensions: []}){
         super()
-        
+
         this.connections = new Set()
 
         config.ADNextensions.push(new EntityIDExtension('\x01'))
@@ -42,7 +42,7 @@ export class FractalServer extends EventEmitter {
             this.connections.delete(connection)
         })
     }
-    
+
     async start() {
         if(this.server.listening) throw new Error('FractalServer has already been started')
         let promise = new Promise(resolve => this.server.on('listening', resolve))

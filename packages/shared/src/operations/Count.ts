@@ -1,5 +1,5 @@
-import { Entity } from '../utils/Entity'
-import { BaseOperation } from './BaseOperation'
+import { Entity } from '../utils/Entity.js'
+import { BaseOperation } from './BaseOperation.js'
 
 export interface Count extends BaseOperation {
     op: 'Count'

@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/adn",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "",
   "type": "module",
   "exports": {
@@ -10,8 +10,12 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "./dist/index.d.ts": [ "./dist/index.d.ts" ],
-      "*": [ "dist/*" ]
+      "./dist/index.d.ts": [
+        "./dist/index.d.ts"
+      ],
+      "*": [
+        "dist/*"
+      ]
     }
   },
   "files": [

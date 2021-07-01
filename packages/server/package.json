@@ -1,6 +1,6 @@
 {
   "name": "@fractaldb/fractal-server",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "main": "dist/index",
   "types": "dist/index",
   "type": "module",
@@ -36,8 +36,8 @@
     }
   },
   "dependencies": {
-    "@fractaldb/adn": "^0.2.6",
-    "@fractaldb/shared": "^0.2.6",
+    "@fractaldb/adn": "^0.2.7",
+    "@fractaldb/shared": "^0.2.7",
     "@framework-tools/catchit": "^1.0.5",
     "@types/jest": "^26.0.23",
     "@types/node": "^15.0.2",

@@ -8,6 +8,7 @@ const adn = new ADN([])
  */
 const SerDes = (val: any) => adn.deserialize(adn.serialize(val))
 
+
 describe('can serialize primitives', () => {
     test('can serialize/deserialize false primitive', () => {
         expect(SerDes(false)).toEqual(false);

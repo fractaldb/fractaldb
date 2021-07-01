@@ -2,22 +2,27 @@
   "name": "@fractaldb/adn",
   "version": "0.2.6",
   "description": "",
-  "type": "commonjs",
+  "type": "module",
   "exports": {
     ".": "./dist/index.js",
-    "./": "./dist/"
+    "./*": "./dist/*"
+  },
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "./dist/index.d.ts": [ "./dist/index.d.ts" ],
+      "*": [ "dist/*" ]
+    }
   },
   "files": [
     "dist"
   ],
   "dependencies": {
+    "@types/jest": "^26.0.23",
     "@types/node": "^15.12.4",
     "bson-objectid": "^2.0.1"
   },
   "devDependencies": {
-    "@rollup/plugin-typescript": "^8.2.1",
-    "@types/jest": "^26.0.23",
-    "@types/node": "^15.12.2",
     "ts-jest": "^27.0.3",
     "tslib": "^2.2.0",
     "typescript": "^4.3.2"

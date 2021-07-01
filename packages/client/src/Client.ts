@@ -2,12 +2,10 @@ import net, { Socket } from 'net'
 import EventEmitter from 'events'
 import { Operation } from '@fractaldb/shared/operations'
 import { splitBufferStream } from '@fractaldb/shared/utils/buffer'
-import Collection from './Collection'
-import Cursor from './Cursor'
 import Database from './Database'
 import { ClientSession } from './Session'
 import { ADN, ADNExtension } from '@fractaldb/adn'
-import { EntityIDExtension } from '@fractaldb/adn/EntityID'
+import { EntityIDExtension } from '@fractaldb/adn/EntityID.js'
 
 type FractalClientOptions = {
     host: string
@@ -47,6 +45,10 @@ export class FractalClient extends EventEmitter {
         // this.state
     }
 
+    close() {
+        this.socket.destroy()
+    }
+
     db(name: string){
         return new Database(name, this)
     }
@@ -63,5 +65,5 @@ class FractalClientState {
 }
 
 export class SessionPool {
-    
+
 }

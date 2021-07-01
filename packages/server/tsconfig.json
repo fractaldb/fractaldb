@@ -1,6 +1,8 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "module": "esnext",
+    "target": "esnext",
     "baseUrl": ".",
     "rootDir": "src",
     "outDir": "dist",
@@ -11,5 +13,8 @@
       "@fractaldb/adn/*": ["./../adn/src/*"],
     }
   },
-  "references": [{ "path": "../shared" }, { "path": "../adn" }]
+  "references": [
+    { "path": "../shared" },
+    { "path": "../adn" }
+  ]
 }

@@ -5,7 +5,7 @@ import { EntityID } from '@fractaldb/adn/EntityID'
 
 export type EntityMap = Map<number, Entity>
 
-function matchesQuery(doc: any, query: any) {
+export function matchesQuery(doc: any, query: any) {
     let match = true
     for (const prop in query) {
         if (doc[prop] !== query[prop]) {

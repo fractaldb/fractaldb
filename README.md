@@ -4,6 +4,7 @@
 
 ```
 npm i -g lerna jest tsc rimraf
+npm i jest
 lerna link
 lerna bootstrap
 ```

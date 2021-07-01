@@ -1,3 +1,3 @@
-import { FractalClient } from './Client'
+import { FractalClient } from './Client.js'
 
 export { FractalClient }

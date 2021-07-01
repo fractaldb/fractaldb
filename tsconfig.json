@@ -11,9 +11,10 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["jest", "node"]
   },
   "exclude": [
+    "**/dist",
     "**/tests"
   ]
 }

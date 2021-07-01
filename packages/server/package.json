@@ -3,7 +3,7 @@
   "version": "0.2.6",
   "main": "dist/index",
   "types": "dist/index",
-  "type": "commonjs",
+  "type": "module",
   "files": [
     "dist"
   ],
@@ -13,12 +13,38 @@
     "watch": "tsc -w",
     "compile": "tsc",
     "prepublishOnly": "npm run build",
-    "test": "npm run build"
+    "test": "node --experimental-specifier-resolution=node --loader ts-node/esm ./tests.test.ts"
+  },
+  "jest": {
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
+    "transform": {
+      ".(ts|tsx)": "ts-jest"
+    },
+    "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(ts|tsx|js)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "globals": {
+      "ts-jest": {
+        "tsconfig": "./tests/tsconfig.json",
+        "useESM": true
+      }
+    }
   },
   "dependencies": {
     "@fractaldb/adn": "^0.2.6",
     "@fractaldb/shared": "^0.2.6",
-    "@types/node": "^15.0.2"
+    "@framework-tools/catchit": "^1.0.5",
+    "@types/jest": "^26.0.23",
+    "@types/node": "^15.0.2",
+    "ts-node": "^10.0.0"
   },
-  "gitHead": "7d986ba599dc0014b81e473d076b504dbca27cd6"
+  "gitHead": "7d986ba599dc0014b81e473d076b504dbca27cd6",
+  "devDependencies": {
+    "ts-jest": "^27.0.3"
+  }
 }

@@ -6,6 +6,7 @@ import { UpdateOperation } from '@fractaldb/shared/utils/JSONPatch'
 import { Operation, OperationResponse } from '@fractaldb/shared/operations'
 import { Entity } from '@fractaldb/shared/utils/Entity'
 import { DataTypes } from '@fractaldb/shared/utils/buffer'
+import { FindOneResponse } from '@fractaldb/shared/operations/FindOne'
 
 export default class Collection {
     name: string
@@ -22,7 +23,7 @@ export default class Collection {
         return this.database.client.socket
     }
 
-    sendMessage(json: Operation){
+    sendMessage(json: Operation): Promise<any>{
         let requestID = uuidV4().toString('hex')
 
         let responsePromise = new Promise(resolve => this.database.client.on(`response:${requestID}`, resolve))
@@ -47,7 +48,7 @@ export default class Collection {
         // return cursor
     }
 
-    async findOne(query: any = {}) {
+    async findOne(query: any = {}): Promise<FindOneResponse> {
         return await this.sendMessage({
             op: 'FindOne',
             query,

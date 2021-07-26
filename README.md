@@ -7,6 +7,9 @@ npm i -g lerna jest tsc rimraf
 npm i jest
 lerna link
 lerna bootstrap
+
+at root you will need to execute
+npm i
 ```
 
 <!--suppress HtmlDeprecatedAttribute -->

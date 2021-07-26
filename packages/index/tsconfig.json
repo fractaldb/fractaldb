@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": "src",
+    "outDir": "dist",
+    "target": "ESNext",
+    "module": "ESNext",
+    "paths": {
+      "@fractaldb/fractal-server": ["./../server/src/"],
+      "@fractaldb/fractal-server/*": ["./../server/src/*"]
+    }
+  },
+  "references": [
+    { "path": "../server" }
+  ]
+}

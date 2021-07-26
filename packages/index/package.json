@@ -1,5 +1,5 @@
 {
-  "name": "@fractaldb/fractal-server",
+  "name": "@fractaldb/indexing-system",
   "version": "0.2.13",
   "type": "module",
   "exports": {
@@ -8,6 +8,9 @@
   },
   "typesVersions": {
     "*": {
+      ".": [
+        "./dist/index.d.ts"
+      ],
       "./dist/index.d.ts": [
         "./dist/index.d.ts"
       ],
@@ -25,19 +28,11 @@
     "watch": "tsc -w",
     "compile": "tsc",
     "prepublishOnly": "npm run build",
-    "test": "node --loader ts-node/esm ./tests.test.ts"
+    "test": "npm run build"
   },
   "dependencies": {
-    "@fractaldb/adn": "^0.2.13",
-    "@fractaldb/shared": "^0.2.13",
-    "@fractaldb/indexing-system": "^0.2.13",
+    "@fractaldb/fractal-server": "^0.2.13",
     "@framework-tools/catchit": "^1.0.11",
-    "@types/jest": "^26.0.23",
-    "@types/node": "^15.0.2",
     "ts-node": "^10.0.0"
-  },
-  "gitHead": "7d986ba599dc0014b81e473d076b504dbca27cd6",
-  "devDependencies": {
-    "ts-jest": "^27.0.3"
   }
 }

@@ -1,5 +1,5 @@
-import { EntityID, EntityIDExtension } from '../src/EntityID'
-import { ADN } from '../src/index'
+import { EntityID, EntityIDExtension } from '../dist/EntityID.js'
+import { ADN } from '../dist/index.js'
 
 const adn = new ADN([])
 
@@ -13,11 +13,11 @@ describe('can serialize primitives', () => {
     test('can serialize/deserialize false primitive', () => {
         expect(SerDes(false)).toEqual(false);
     });
-    
+
     test('can serialize/deserialize true primitive', () => {
         expect(SerDes(true)).toEqual(true);
     });
-    
+
     test('can serialize/deserialize null primitive', () => {
         expect(SerDes(null)).toEqual(null);
     });
@@ -38,7 +38,7 @@ describe('can serialize primitives', () => {
         test('can serialize/deserialize string with no chars', () => {
             expect(SerDes("")).toEqual("")
         });
-    
+
         test('can serialize/deserialize strings with null bytes', () => {
             expect(SerDes("\x00")).toEqual("\x00")
         })
@@ -143,8 +143,8 @@ describe('can serialise maps', () => {
 
 describe('add custom serialization/deserialization entity', () => {
     test('can handle entityID extension', () => {
-        
-    
+
+
         let adn = new ADN([
             new EntityIDExtension('\x01')
         ])
@@ -158,5 +158,11 @@ describe('add custom serialization/deserialization entity', () => {
 
         expect(deserialized).toEqual(val)
         expect(deserialized.id).toBeInstanceOf(EntityID)
+    })
+})
+
+describe('entityID', () => {
+    test('Two of the same entity IDs are equal', () => {
+
     })
 })

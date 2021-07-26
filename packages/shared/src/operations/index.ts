@@ -11,22 +11,6 @@ import { StartTransaction, StartTransactionResponse } from './StartTransaction.j
 import { UpdateMany, UpdateManyResponse } from './UpdateMany.js'
 import { UpdateOne, UpdateOneResponse } from './UpdateOne.js'
 
-
-// export type {
-//     AbortTransaction,
-//     CommitTransaction,
-//     StartTransaction,
-//     Count,
-//     DeleteOne,
-//     DeleteMany,
-//     FindOne,
-//     FindMany,
-//     InsertOne,
-//     InsertMany,
-//     UpdateOne,
-//     UpdateMany
-// }
-
 export type Operation =
     | AbortTransaction
     | CommitTransaction
@@ -40,9 +24,10 @@ export type Operation =
     | InsertMany
     | UpdateOne
     | UpdateMany
+    // | FindManyMore
 
 export type RequestOperation = Operation & { requestID: string }
-    // | FindManyMore
+
 
 export type OperationResponse =
     | AbortTransactionResponse

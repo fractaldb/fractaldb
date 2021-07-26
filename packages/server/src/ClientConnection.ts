@@ -32,13 +32,11 @@ import { splitBufferStream, DataTypes } from '@fractaldb/shared/utils/buffer.js'
 export default class ClientConnection extends EventEmitter {
     socket: Socket
     server: FractalServer
-    sessions: Map<Buffer, Session>
 
     constructor(socket: Socket, server: FractalServer){
         super()
         this.socket = socket
         this.server = server
-        this.sessions = new Map()
 
         let bufferStream = splitBufferStream(str => this.handleMessage(str))
 
@@ -65,6 +63,10 @@ export default class ClientConnection extends EventEmitter {
             case 'AbortTransaction':
                 response = await AbortTransactionCommand(operation, tx)
                 break
+            case 'StartTransaction':
+                response = await StartTransactionCommand(operation, tx)
+                shouldCommit = false
+                break
             case 'CommitTransaction':
                 response = await CommitTransactionCommand(operation, tx)
                 break
@@ -88,10 +90,6 @@ export default class ClientConnection extends EventEmitter {
                 break
             case 'InsertOne':
                 response = await InsertOneCommand(operation, tx)
-                break
-            case 'StartTransaction':
-                response = await StartTransactionCommand(operation, tx)
-                shouldCommit = false
                 break
             case 'UpdateMany':
                 response = await UpdateManyCommand(operation, tx)

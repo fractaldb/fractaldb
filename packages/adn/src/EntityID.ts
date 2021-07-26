@@ -51,6 +51,14 @@ export class EntityID {
         }
     }
 
+    [Symbol.toPrimitive](hint: 'number' | 'string' | 'default') {
+        return this.valueOf()
+    }
+
+    valueOf(){
+        return `EntityID[${this.toString()}]`
+    }
+
     [util.inspect.custom] () {
         return process.stdout?.hasColors?.()
             ? COLORS.Bright + COLORS.Magenta + `EntityID ` + COLORS.White + `[` + COLORS.Magenta + this.toString() + COLORS.White + `]` + COLORS.Reset

@@ -1,0 +1,198 @@
+
+## Data Store Layers
+
+- TX state
+    - this keeps track of any local state changes of docs in transactions, and includes indexes too.
+    - Anything that can't be found in here searches the in-memory database next
+- in-memory database storage
+    - keeps track of docs and indexes which haven't been persisted to disk yet, but have been persisted to transaction logs
+    - Anything that can't be found here searches the LRU cache
+- LRU cache
+    - keeps in memory the representation of docs and indexes which are frequently accessed using a least-recently-used cache
+    - Anything that can't be found here searches the disk store, and adds the item to the LRU
+- disk store
+    - for any items that can't be found in the LRU cache, the disk is the final location to search for a node or index
+    - anything that can't be found here doesn't exist
+
+### Index store layers
+- TX state
+  - root indexes: contains any changed / edited / deleted indexes
+  - indexes: a map of ids to indexes
+  - nodes: a map of ids to nodes
+---
+
+Transaction commit method:
+- get list of commands that have been applied in the tranaction
+- serialise all of the commands/transaction into a single string
+- generate header with the following data:
+    - tx UUID
+    - length of serialised data
+    - crc32 checksum of serialised data
+- header is a fixed length buffer/encoding of the above data
+- write the serialised string to the transaction log
+
+Transaction recovery process for when database crashes:
+- have a variable that keeps track of cursor position as integer
+- cursor starts at 0
+- get length of the transaction log file
+- while cursor is less than length of transaction log file:
+    - read the header and get the:
+        - crc32 checksum
+        - length of serialised data
+        - tx UUID
+    - if checksum is valid:
+        - read the serialised data
+        - deserialise the data
+        - apply each command in the transaction to the database store
+        - increment cursor by the length of the header + the length of the serialised data + the length of the crc32 checksum
+    - if checksum is not valid:
+        - write the rest of the transaction log data corrupt data to a separate file
+
+After transaction has been committed:
+    - write the
+
+- read the transaction log, which contains multiple transactions
+- for each transaction:
+  - read header
+  - get the checksum
+  - get the serialised commands
+  - if the checksum doesn't match
+    - discard the transaction
+  - else
+    - deserialise the commands
+    - apply the commands to the store
+
+
+
+Ideal system
+============
+
+node-level locking based thread accessing a node
+each db gets a lock over a range of nodes based on their availability
+
+
+inserts:
+--------
+db a
+db b
+
+Both get a request to insert a new user, both add to the index
+then they recieve eachothers request and add to index
+it would result in the exact same index due to sorting
+
+
+
+
+
+deadlock resolution algorithm:
+
+- transaction trys to acquire a lock
+  - if it acquires lock
+    - do the operation
+  - if there is an existing lock
+    - add transaction to queue
+    - if the existing lock is owned by the same transaction
+        - continue
+    - else
+        - create a variable TX to keep track of transaction
+        - get the transaction holding the lock
+        - while true
+            - if the transaction is the same as the current transaction
+                - return error
+            - else if transaction is waiting for a lock
+                - get the transaction holding the lock and store it in the variable TX
+                - continue
+            - else
+                - break
+        - wait for lock to release, and then acquire it
+        - acquire lock
+            - do the operation
+        - release lock
+
+
+
+await database.waitForLockRelease(resource)
+
+class Database {
+
+    locks = new Map()
+
+    async tryToAcquireLock(resource: number) {
+        if (this.locks.has(resource)) {
+
+        while true {
+            if (this.locks.has(resource)) {
+                const tx = this.locks.get(resource)
+}
+
+
+lock queue functionality:
+- keep a list of locks by their id
+
+- while true
+    - if there is a transaction waiting for a lock
+        - get the transactopm
+
+
+==========
+Steps:
+1.  DONE -In ClientConnection.ts, make it so that if a txid is provided in the command, find the existing transaction instead of always creating a new one
+2. Add the ability for each transaction to have it's own internal transaction state
+    - docs:
+        - find operation -> we firstly check the internal transaction state if it exists, else we check the main database
+        - update operation -> find or create doc in internal transaction state
+        - delete -> class Deleted, if we're checking to find a doc, we check internal state first and do this doc instanceof Deleted, return null
+        - insert -> works like update, except we don't need to bother finding
+    - indexes:
+        - createIndex
+        - deleteIndex
+        - add():
+        - remove:
+        - addSubIndex
+        - removeSubIndex
+    - Layers of data retrieval:
+        - TX state
+            - this keeps track of any local state changes of docs in transactions, and includes indexes too.
+            - Anything that can't be found in here searches the in-memory database next
+        - in-memory database storage
+            - keeps track of docs and indexes which haven't been persisted to disk yet, but have been persisted to transaction logs
+            - Anything that can't be found here searches the LRU cache
+        - LRU cache
+            - keeps in memory the representation of docs and indexes which are frequently accessed using a least-recently-used cache
+            - Anything that can't be found here searches the disk store, and adds the item to the LRU
+        - disk store
+            - for any items that can't be found in the LRU cache, the disk is the final location to search for a node or index
+            - anything that can't be found here doesn't exist
+
+3. DONE - Add read/write lock system
+4. Add transaction log system & store all information regarding the transaction
+    - generate list of commands to do
+    - serialize list of commands with ADN (called Data)
+    - generate header for ADN strings with following details:
+        - txid
+        - timestamp
+        - length
+        - version
+        - checksum
+    -Serialize data to get length of the ADN string?
+5. Index Write To Disk system
+    - ability to write the in-memory representation of the btree to disk and allow async retrieval of disk objects
+
+---- list of all commands
+- free space (1): [number, number][]
+- allocate space (2): [number, number][]
+- free id(3): number[]
+- allocate id (4): number[]
+- write (5): [offset: number, length: number, data: any]
+
+
+data[key] = value
+
+log: {
+    freeSpace: [
+        [25, 256]
+    ],
+    allocateSpace: [
+        [2]
+    ]
+}

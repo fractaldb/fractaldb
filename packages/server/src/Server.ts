@@ -15,6 +15,7 @@ export class FractalServer extends EventEmitter {
     connections: Set<ClientConnection>
     store: DocStore
     adn: ADN
+    transactions: Map<string, Transaction>
 
     constructor(config: Config = { ADNextensions: []}){
         super()
@@ -25,7 +26,8 @@ export class FractalServer extends EventEmitter {
 
         this.adn = new ADN(config.ADNextensions)
         this.server = net.createServer()
-        this.store = new DocStore(new Map())
+        this.store = new DocStore(new Map(), this)
+        this.transactions = new Map()
         this.server.on('connection', socket => this.newConnection(socket))
     }
 

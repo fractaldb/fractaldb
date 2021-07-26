@@ -2,13 +2,14 @@
 // this is the database representation of the docs
 import { Entity } from '@fractaldb/shared/utils/Entity.js'
 import { EntityID } from '@fractaldb/adn/EntityID.js'
+import { FractalServer } from '../Server.js'
 
 export type EntityMap = Map<number, Entity>
 
 export function matchesQuery(doc: any, query: any) {
     let match = true
     for (const prop in query) {
-        if (doc[prop] !== query[prop]) {
+        if (doc[prop]?.valueOf() !== query[prop]?.valueOf()) {
             match = false
             break
         }
@@ -20,9 +21,11 @@ export class DocStore {
     availableIDs: number[] = []
     highestID: number
     docs: EntityMap
-    constructor(docs: EntityMap) {
+    server: FractalServer
+    constructor(docs: EntityMap, server: FractalServer) {
         this.docs = docs
         this.highestID = docs.size + 1
+        this.server = server
     }
 
     findOne(query: any): Entity | null {

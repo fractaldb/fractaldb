@@ -1,4 +1,4 @@
-import { DocStore, EntityMap } from './DocStore.js'
+import { DocStore, EntityMap, matchesQuery } from './DocStore.js'
 import { apply, UpdateOperation } from '@fractaldb/shared/utils/JSONPatch.js'
 import { InsertManyResponse } from '@fractaldb/shared/operations/InsertMany.js'
 import { InsertOneResponse } from '@fractaldb/shared/operations/InsertOne.js'
@@ -11,6 +11,7 @@ import { DeleteManyResponse } from '@fractaldb/shared/operations/DeleteMany.js'
 import { CountResponse } from '@fractaldb/shared/operations/Count.js'
 import { Entity } from '@fractaldb/shared/utils/Entity.js'
 import { EntityID } from '@fractaldb/adn/EntityID.js'
+import { Database } from './Database.js'
 
 interface queryOption {
     projection: any
@@ -49,10 +50,10 @@ class TransactionState {
     revision: number
     usedIDs: number[] = []
     private tx: Transaction
-    private store: DocStore
+    database: Database
 
-    constructor(store: DocStore, tx: Transaction) {
-        this.store = store
+    constructor(db: Database, tx: Transaction) {
+        this.database = db
         this.readCache = new Map()
         this.writeDocOps = new Map()
         this.revision = 0
@@ -69,8 +70,8 @@ class TransactionState {
         // add indexing here currently O(log n)
         let iter = this.writeDocOps.entries()
         for (const [internalID, doc] of iter) {
-            for (const prop in query) {
-                if (doc[prop] !== query[prop]) continue
+            if(matchesQuery(doc, query)) {
+                return doc
             }
 
             return doc
@@ -79,7 +80,7 @@ class TransactionState {
     }
 
     updateEntity(entity: Entity) {
-        this.writeDocOps.set(entity.internalID, entity)
+        this.writeDocOps.set(entity.entityID.internalID, entity)
     }
 
     createEntity(doc: any = {}): Entity {
@@ -98,13 +99,15 @@ class TransactionState {
 }
 
 export class Transaction implements TransactionInterface {
-    store: DocStore
+    database: Database
     state: TransactionState
     id: string
+    waitingOn?: number
 
-    constructor(store: DocStore, txID: string) {
-        this.store = store
-        this.state = new TransactionState(store, this)
+
+    constructor(db: Database, txID: string) {
+        this.database = db
+        this.state = new TransactionState(db, this)
         this.id = txID
     }
 
@@ -123,11 +126,11 @@ export class Transaction implements TransactionInterface {
     }
 
     findMany(query: any) {
-        return this.store.find(query)
+        return this.state.find(query)
     }
 
     deleteOne(query: any){
-        let entity = this.store.findOne(query)
+        let entity = this.state.findOne(query)
 
         if(entity) {
             this.state.deleteByInternalID(entity.internalID)
@@ -140,7 +143,7 @@ export class Transaction implements TransactionInterface {
     deleteMany(query: any){
         let deletedCount = 0
 
-        let entities = this.store.find(query)
+        let entities = this.state.find(query)
 
         entities.map(entity => {
             this.state.deleteByInternalID(entity.internalID)
@@ -151,15 +154,15 @@ export class Transaction implements TransactionInterface {
     }
 
     updateOne(query: any, updateOps: UpdateOperation[], options?: queryOption) {
-        let entity = this.findOne(query)
+        let entity = this.findOne(query) as Entity
         let updatedCount = 0
 
         if(entity) {
             let i = 0, len = updateOps.length
             while(i < len){
                 let op = updateOps[i++]
-
-                entity.doc = apply(JSON.parse(JSON.stringify(entity.doc)), op)
+                let adn = this.state.server.adn
+                entity = apply(adn.deserialize(adn.serialize(entity)), op) //serializing & deserializing creates an effective clone of the entity
                 this.state.updateEntity(entity)
             }
             updatedCount++
@@ -177,7 +180,8 @@ export class Transaction implements TransactionInterface {
             while(i < len){
                 let op = updateOps[i++]
 
-                entity.doc = apply(JSON.parse(JSON.stringify(entity.doc)), op)
+                let adn = this.database.server.adn
+                entity = apply(adn.deserialize(adn.serialize(entity)), op)
                 this.state.updateEntity(entity)
             }
             updatedCount++
@@ -197,7 +201,7 @@ export class Transaction implements TransactionInterface {
         return this.store.findByEntityID(entityID)
     }
     /**
-     * This function commits the changes to the database
+     * This function commits the changes to the log, and then to the in-memory database
      */
     commit() {
         let docs = this.state.writeDocOps.entries()
@@ -208,6 +212,6 @@ export class Transaction implements TransactionInterface {
     }
 
     abort() {
-        this.store.availableIDs.push(...this.state.usedIDs)
+        this.state.availableIDs.push(...this.state.usedIDs)
     }
 }

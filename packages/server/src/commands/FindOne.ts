@@ -1,5 +1,5 @@
 import { FindOne, FindOneResponse } from '@fractaldb/shared/operations/FindOne'
-import { Transaction } from '../db/Transaction'
+import { Transaction } from '../layers/transaction/Transaction'
 
 export async function FindOneCommand (op: FindOne, tx: Transaction): Promise<FindOneResponse> {
     return {

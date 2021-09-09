@@ -1,7 +1,7 @@
-import { Database } from './Database.js'
+import { Database } from '../../database/Database.js'
 import { Transaction } from './Transaction.js'
-import { PropertyIndex, ValueIndex } from '@fractaldb/indexing-system/Index.js'
-import { BNode } from '@fractaldb/indexing-system/BTreeNode.js'
+import { PropertyIndex, ValueIndex } from '@fractaldb/indexing-system/src'
+import { BNode, BNodeInternal } from '@fractaldb/indexing-system/BTreeNode.js'
 
 /**
  * Transaction State Store
@@ -23,7 +23,7 @@ export class TransactionState {
 
     indexes: Map<number, PropertyIndex<any> | null> = new Map()
 
-    bnodes: Map<number, BNode<any, any> | null> = new Map()
+    bnodes: Map<number, BNode<any, any> | BNodeInternal<any, any> | null> = new Map()
 
     docs: Map<number, any> = new Map()
 
@@ -57,7 +57,7 @@ export class TransactionState {
      * Check if it exists in the current map of BNodes, otherwise
      * try to search the in-memory db for the index
      */
-    async getBNode(id: number) {
+    async getBNode(id: number): BNode | null {
         let bnode = this.bnodes.get(id)
 
         // if the value is null, then the value was deleted

@@ -1,8 +1,8 @@
 import net, { Server, Socket } from 'net'
 import EventEmitter from 'events'
 import ClientConnection from './ClientConnection.js'
-import { DocStore } from './db/DocStore.js'
-import { Transaction } from './db/Transaction.js'
+import { DocStore } from '../layers/inmemory/DocStore.js'
+import { Transaction } from '../layers/transaction/Transaction.js'
 import { ADN, ADNExtension } from '@fractaldb/adn'
 import { EntityIDExtension } from '@fractaldb/adn/EntityID.js'
 

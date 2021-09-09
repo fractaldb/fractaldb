@@ -10,10 +10,13 @@
       "@fractaldb/shared/*": ["./../shared/src/*"],
       "@fractaldb/adn": ["./../adn/src/index.ts"],
       "@fractaldb/adn/*": ["./../adn/src/*"],
+      "@fractaldb/indexing-system": ["../index/src/index.ts"],
+      "@fractaldb/indexing-system/*": ["./../index/src/*"],
     }
   },
   "references": [
     { "path": "../shared" },
-    { "path": "../adn" }
+    { "path": "../adn" },
+    { "path": "../index" }
   ]
 }

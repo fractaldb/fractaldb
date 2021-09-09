@@ -3,30 +3,45 @@
 // A B+ tree consists of a root, internal nodes and leaves.
 // The root may be either a leaf or a node with two or more children
 
-import { BNode, BNodeInternal, EditRangeResult, index } from './BTreeNode.js'
+import { TransactionCollection } from '@fractaldb/fractal-server/layers/transaction/TransactionCollection'
+import { BNode, BNodeInternal, EditRangeResult } from './BTreeNode.js'
 
-function iterator<T>(next: () => IteratorResult<T> = (() => ({ done:true, value:undefined }))): IterableIterator<T> {
-    var result: any = { next };
-    if (Symbol && Symbol.iterator)
-        result[Symbol.iterator] = function() { return this; };
-    return result;
+function iterator<T>(next: () => Promise<IteratorResult<T>> = (async () => ({ done:true, value:undefined }))): IterableIterator<T> {
+    let result: any = { next }
+    if (Symbol && Symbol.iterator) {
+        result[Symbol.iterator] = function() {
+            return this
+        }
+    }
+    return result
 }
 
-export type Comparator<K> = (a: K, b: K) => -1 | 0 | 1;
 
 export default class BTree<K, V> {
-    root: BNode<K, V> | BNodeInternal<K,V> = EmptyLeaf as BNode<K, V>
+    id: number
+    root: number
     size: number = 0
     compare: Comparator<K>
     maxNodeSize: number
-    constructor(compare?: Comparator<K>, entries?: [K, V][], maxNodeSize?: number) {
+    txState: TransactionCollection
+
+    constructor(txState: TransactionCollection, id: number, root: number, size: number, maxNodeSize?: number, compare?: Comparator<K>) {
+        this.txState = txState
+        this.id = id
+        this.size = size
+        this.root = root
         this.maxNodeSize = maxNodeSize! >= 2 ? Math.min(maxNodeSize!, 256) : 32
         this.compare = compare ?? function (a: K, b: K) {
             return a > b ? 1 : a < b ? -1 : 0
         }
-        if (entries) {
-            this.setPairs(entries)
+    }
+
+    async getRoot(): Promise<BNode<K, V> | BNodeInternal<K, V>> {
+        if(!this.root) {
+            this.root = (await EmptyLeaf(this.txState) as BNode<K, V>).id
+            await this.txState.indexes.setAsModified(this.id)
         }
+        return await this.txState.bnodes.get(this.root)
     }
 
 
@@ -38,13 +53,14 @@ export default class BTree<K, V> {
         return this.size === 0
     }
 
-    clear(): void {
-        this.root = EmptyLeaf as BNode<K, V>
+    async clear(): Promise<void> {
+        await this.txState.bnodes.remove(this.root)
+        this.root = (await EmptyLeaf(this.txState) as BNode<K, V>).id
         this.size = 0
     }
 
 
-    forEach(callback: (v:V, k:K, tree:BTree<K,V>) => void, thisArg?: any): number;
+    async forEach(callback: (v:V, k:K, tree:BTree<K,V>) => void, thisArg?: any): Promise<number>;
 
     /** Runs a function for each key-value pair, in order from smallest to
      *  largest key. For compatibility with ES6 Map, the argument order to
@@ -54,10 +70,10 @@ export default class BTree<K, V> {
      *        value for each callback.
      * @returns the number of values that were sent to the callback,
      *        or the R value if the callback returned {break:R}. */
-    forEach<R = number>(callback: (v: V, k: K, tree: BTree<K, V>) => { break?: R } | void, thisArg?: any): R | number {
+    async forEach<R = number>(callback: (v: V, k: K, tree: BTree<K, V>) => { break?: R } | void, thisArg?: any): Promise<number | R> {
         if (thisArg !== undefined)
             callback = callback.bind(thisArg)
-        return this.forEachPair((k, v) => callback(v, k, this))
+        return await this.forEachPair((k, v) => callback(v, k, this))
     }
 
     /** Runs a function for each key-value pair, in order from smallest to
@@ -74,9 +90,10 @@ export default class BTree<K, V> {
      * @returns the number of pairs sent to the callback (plus initialCounter,
      *        if you provided one). If the callback returned {break:R} then
      *        the R value is returned instead. */
-    forEachPair<R = number>(callback: (k: K, v: V, counter: number) => { break?: R } | void, initialCounter?: number): R | number {
-        var low = this.minKey(), high = this.maxKey()
-        return this.forRange(low!, high!, true, callback, initialCounter)
+    async forEachPair<R = number>(callback: (k: K, v: V, counter: number) => { break?: R } | void, initialCounter?: number): Promise<number | R> {
+        let low = await this.minKey()
+        let high = await this.maxKey()
+        return await this.forRange(low!, high!, true, callback, initialCounter)
     }
     /**
      * Finds a pair in the tree and returns the associated value.
@@ -84,8 +101,8 @@ export default class BTree<K, V> {
      * @returns the value, or defaultValue if the key was not found.
      * @description Computational complexity: O(log size)
      */
-    get(key: K): V | undefined {
-        return this.root.get(key, this)
+    async get(key: K): Promise<V | undefined> {
+        return (await this.getRoot()).get(key, this)
     }
 
     /**
@@ -102,14 +119,20 @@ export default class BTree<K, V> {
      * as well as the value. This has no effect unless the new key
      * has data that does not affect its sort order.
      */
-    set(key: K, value: V, overwrite?: boolean): boolean {
-        if (this.root.isShared)
-            this.root = this.root.clone()
-        var result = this.root.set(key, value, overwrite , this)
+    async set(key: K, value: V, overwrite?: boolean): Promise<boolean> {
+        let currentRoot = await this.getRoot()
+
+        let result = await currentRoot.set(key, value, overwrite , this)
         if (result === true || result === false)
             return result
         // Root node has split, so create a new root node.
-        this.root = new BNodeInternal<K, V>([this.root, result])
+        let id = await this.txState.bnodes.allocateID()
+        let root = new BNodeInternal<K, V>(this.txState, id, [this.root, result.id], [await currentRoot.maxKey(), await result.maxKey()])
+        await this.txState.bnodes.set(id, root)
+
+        this.root = id
+        await this.txState.indexes.setAsModified(id)
+
         return true
     }
 
@@ -120,8 +143,8 @@ export default class BTree<K, V> {
      * @param key Key to detect
      * @description Computational complexity: O(log size)
      */
-    has(key: K): boolean {
-        return this.forRange(key, key, true, undefined) !== 0
+    async has(key: K): Promise<boolean> {
+        return await this.forRange(key, key, true, undefined) !== 0
     }
 
     /**
@@ -130,94 +153,95 @@ export default class BTree<K, V> {
      * @returns true if a pair was found and removed, false otherwise.
      * @description Computational complexity: O(log size)
      */
-    delete(key: K): boolean {
-        return this.editRange(key, key, true, DeleteRange) !== 0
+    async delete(key: K): Promise<boolean> {
+        return await this.editRange(key, key, true, DeleteRange) !== 0
     }
 
-    /////////////////////////////////////////////////////////////////////////////
-    // Clone-mutators ///////////////////////////////////////////////////////////
+    // /////////////////////////////////////////////////////////////////////////////
+    // // Clone-mutators ///////////////////////////////////////////////////////////
 
-    /** Returns a copy of the tree with the specified key set (the value is undefined). */
-    with(key: K): BTree<K, V | undefined>
-    /** Returns a copy of the tree with the specified key-value pair set. */
-    with<V2>(key: K, value: V2, overwrite?: boolean): BTree<K, V | V2>
-    with<V2>(key: K, value?: V2, overwrite?: boolean): BTree<K, V | V2 | undefined> {
-        let nu = this.clone() as BTree<K, V | V2 | undefined>
-        return nu.set(key, value, overwrite) || overwrite ? nu : this
-    }
+    // /** Returns a copy of the tree with the specified key set (the value is undefined). */
+    // async with(key: K): Promise<BTree<K, V | undefined>>
+    // /** Returns a copy of the tree with the specified key-value pair set. */
+    // async with<V2>(key: K, value: V2, overwrite?: boolean): Promise<BTree<K, V | V2>>
+    // async with<V2>(key: K, value?: V2, overwrite?: boolean): Promise<BTree<K, V | V2 | undefined>> {
+    //     let nu = await this.clone() as BTree<K, V | V2 | undefined>
+    //     return await nu.set(key, value, overwrite) || overwrite ? nu : this
+    // }
 
-    /** Returns a copy of the tree with the specified key-value pairs set. */
-    withPairs<V2>(pairs: [K, V | V2][], overwrite: boolean): BTree<K, V | V2> {
-        let nu = this.clone() as BTree<K, V | V2>
-        return nu.setPairs(pairs, overwrite) !== 0 || overwrite ? nu : this
-    }
+    // /** Returns a copy of the tree with the specified key-value pairs set. */
+    // async withPairs<V2>(pairs: [K, V | V2][], overwrite: boolean): Promise<BTree<K, V | V2>> {
+    //     let nu = this.clone() as BTree<K, V | V2>
+    //     return nu.setPairs(pairs, overwrite) !== 0 || overwrite ? nu : this
+    // }
 
-    /** Returns a copy of the tree with the specified keys present.
-     *  @param keys The keys to add. If a key is already present in the tree,
-     *         neither the existing key nor the existing value is modified.
-     *  @param returnThisIfUnchanged if true, returns this if all keys already
-     *  existed. Performance note: due to the architecture of this class, all
-     *  node(s) leading to existing keys are cloned even if the collection is
-     *  ultimately unchanged.
-    */
-    withKeys(keys: K[], returnThisIfUnchanged?: boolean): BTree<K, V | undefined> {
-        let nu = this.clone() as BTree<K, V | undefined>, changed = false
-        for (var i = 0; i < keys.length; i++)
-            changed = nu.set(keys[i], undefined, false) || changed
-        return returnThisIfUnchanged && !changed ? this : nu
-    }
+    // /** Returns a copy of the tree with the specified keys present.
+    //  *  @param keys The keys to add. If a key is already present in the tree,
+    //  *         neither the existing key nor the existing value is modified.
+    //  *  @param returnThisIfUnchanged if true, returns this if all keys already
+    //  *  existed. Performance note: due to the architecture of this class, all
+    //  *  node(s) leading to existing keys are cloned even if the collection is
+    //  *  ultimately unchanged.
+    // */
+    // async withKeys(keys: K[], returnThisIfUnchanged?: boolean): Promise<BTree<K, V | undefined>> {
+    //     let nu = await this.clone() as BTree<K, V | undefined>
+    //     let changed = false
+    //     for (let i = 0; i < keys.length; i++)
+    //         changed = await nu.set(keys[i], undefined, false) || changed
+    //     return returnThisIfUnchanged && !changed ? this : nu
+    // }
 
-    /** Returns a copy of the tree with the specified key removed.
-     * @param returnThisIfUnchanged if true, returns this if the key didn't exist.
-     *  Performance note: due to the architecture of this class, node(s) leading
-     *  to where the key would have been stored are cloned even when the key
-     *  turns out not to exist and the collection is unchanged.
-     */
-    without(key: K, returnThisIfUnchanged?: boolean): BTree<K, V> {
-        return this.withoutRange(key, key, true, returnThisIfUnchanged)
-    }
+    // /** Returns a copy of the tree with the specified key removed.
+    //  * @param returnThisIfUnchanged if true, returns this if the key didn't exist.
+    //  *  Performance note: due to the architecture of this class, node(s) leading
+    //  *  to where the key would have been stored are cloned even when the key
+    //  *  turns out not to exist and the collection is unchanged.
+    //  */
+    // async without(key: K, returnThisIfUnchanged?: boolean): Promise<BTree<K, V>> {
+    //     return await this.withoutRange(key, key, true, returnThisIfUnchanged)
+    // }
 
-    /** Returns a copy of the tree with the specified keys removed.
-     * @param returnThisIfUnchanged if true, returns this if none of the keys
-     *  existed. Performance note: due to the architecture of this class,
-     *  node(s) leading to where the key would have been stored are cloned
-     *  even when the key turns out not to exist.
-     */
-    withoutKeys(keys: K[], returnThisIfUnchanged?: boolean): BTree<K, V> {
-        let nu = this.clone()
-        return nu.deleteKeys(keys) || !returnThisIfUnchanged ? nu : this
-    }
+    // /** Returns a copy of the tree with the specified keys removed.
+    //  * @param returnThisIfUnchanged if true, returns this if none of the keys
+    //  *  existed. Performance note: due to the architecture of this class,
+    //  *  node(s) leading to where the key would have been stored are cloned
+    //  *  even when the key turns out not to exist.
+    //  */
+    // async withoutKeys(keys: K[], returnThisIfUnchanged?: boolean): Promise<BTree<K, V>> {
+    //     let nu = await this.clone()
+    //     return await nu.deleteKeys(keys) || !returnThisIfUnchanged ? nu : this
+    // }
 
-    /** Returns a copy of the tree with the specified range of keys removed. */
-    withoutRange(low: K, high: K, includeHigh: boolean, returnThisIfUnchanged?: boolean): BTree<K, V> {
-        let nu = this.clone()
-        if (nu.deleteRange(low, high, includeHigh) === 0 && returnThisIfUnchanged)
-            return this
-        return nu
-    }
+    // /** Returns a copy of the tree with the specified range of keys removed. */
+    // async withoutRange(low: K, high: K, includeHigh: boolean, returnThisIfUnchanged?: boolean): Promise<BTree<K, V>> {
+    //     let nu = await this.clone()
+    //     if (await nu.deleteRange(low, high, includeHigh) === 0 && returnThisIfUnchanged)
+    //         return this
+    //     return nu
+    // }
 
-    /** Returns a copy of the tree with pairs removed whenever the callback
-     *  function returns false. `where()` is a synonym for this method. */
-    filter(callback: (k: K, v: V, counter: number) => boolean, returnThisIfUnchanged?: boolean): BTree<K, V> {
-        var nu = this.greedyClone()
-        var del: any
-        nu.editAll((k, v, i) => {
-            if (!callback(k, v, i)) return del = Delete
-        })
-        if (!del && returnThisIfUnchanged)
-            return this
-        return nu
-    }
+    // /** Returns a copy of the tree with pairs removed whenever the callback
+    //  *  function returns false. `where()` is a synonym for this method. */
+    // async filter(callback: (k: K, v: V, counter: number) => boolean, returnThisIfUnchanged?: boolean): Promise<BTree<K, V>> {
+    //     let nu = this.greedyClone()
+    //     let del: any
+    //     nu.editAll((k, v, i) => {
+    //         if (!callback(k, v, i)) return del = Delete
+    //     })
+    //     if (!del && returnThisIfUnchanged)
+    //         return this
+    //     return nu
+    // }
 
-    /** Returns a copy of the tree with all values altered by a callback function. */
-    mapValues<R>(callback: (v: V, k: K, counter: number) => R): BTree<K, R> {
-        var tmp = {} as { value: R }
-        var nu = this.greedyClone()
-        nu.editAll((k, v, i) => {
-            return tmp.value = callback(v, k, i), tmp as any
-        })
-        return nu as any as BTree<K, R>
-    }
+    // /** Returns a copy of the tree with all values altered by a callback function. */
+    // mapValues<R>(callback: (v: V, k: K, counter: number) => R): BTree<K, R> {
+    //     let tmp = {} as { value: R }
+    //     let nu = this.greedyClone()
+    //     nu.editAll((k, v, i) => {
+    //         return tmp.value = callback(v, k, i), tmp as any
+    //     })
+    //     return nu as any as BTree<K, R>
+    // }
 
     /** Performs a reduce operation like the `reduce` method of `Array`.
      *  It is used to combine all pairs into a single value, or perform
@@ -227,15 +251,17 @@ export default class BTree<K, V> {
      *  it by the key in pair[0]". Another example would be converting
      *  the tree to a Map (in this example, note that M.set returns M):
      *
-     *  var M = tree.reduce((M, pair) => M.set(pair[0],pair[1]), new Map())
+     *  let M = tree.reduce((M, pair) => M.set(pair[0],pair[1]), new Map())
      *
      *  **Note**: the same array is sent to the callback on every iteration.
      */
-    reduce<R>(callback: (previous: R, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R, initialValue: R): R
-    reduce<R>(callback: (previous: R | undefined, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R): R | undefined
-    reduce<R>(callback: (previous: R | undefined, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R, initialValue?: R): R | undefined {
-        let i = 0, p = initialValue
-        var it = this.entries(this.minKey(), ReusedArray), next
+    async reduce<R>(callback: (previous: R, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R, initialValue: R): Promise<R>
+    async reduce<R>(callback: (previous: R | undefined, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R): Promise<R | undefined>
+    async reduce<R>(callback: (previous: R | undefined, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R, initialValue?: R): Promise<R | undefined> {
+        let i = 0
+        let p = initialValue
+        let it = await this.entries(await this.minKey(), ReusedArray)
+        let next
         while (!(next = it.next()).done)
             p = callback(p, next.value, i++, this)
         return p
@@ -252,14 +278,14 @@ export default class BTree<K, V> {
      *  @param reusedArray Optional array used repeatedly to store key-value
      *         pairs, to avoid creating a new array on every iteration.
      */
-    entries(lowestKey?: K, reusedArray?: (K | V)[]): IterableIterator<[K, V]> {
-        var info = this.findPath(lowestKey)
+    async entries(lowestKey?: K, reusedArray?: (K | V)[]): Promise<IterableIterator<[K, V]>> {
+        let info = await this.findPath(lowestKey)
         if (info === undefined) return iterator<[K, V]>()
-        var { nodequeue, nodeindex, leaf } = info
-        var state = reusedArray !== undefined ? 1 : 0
-        var i = (lowestKey === undefined ? -1 : leaf.indexOf(lowestKey, 0, this.compare) - 1)
+        let { nodequeue, nodeindex, leaf } = info
+        let state = reusedArray !== undefined ? 1 : 0
+        let i = (lowestKey === undefined ? -1 : leaf.indexOf(lowestKey, 0, this.compare) - 1)
 
-        return iterator<[K, V]>(() => {
+        return iterator<[K, V]>(async () => {
             jump: for (; ;) {
                 switch (state) {
                     case 0:
@@ -283,7 +309,7 @@ export default class BTree<K, V> {
                                 break
                         }
                         for (; level > 0; level--) {
-                            nodequeue[level - 1] = (nodequeue[level][nodeindex[level]] as BNodeInternal<K, V>).children
+                            nodequeue[level - 1] = await (nodequeue[level][nodeindex[level]] as BNodeInternal<K, V>).getAllChildren()
                             nodeindex[level - 1] = 0
                         }
                         leaf = nodequeue[0][nodeindex[0]]
@@ -306,23 +332,23 @@ export default class BTree<K, V> {
      *  @param skipHighest Iff this flag is true and the highestKey exists in the
      *         collection, the pair matching highestKey is skipped, not iterated.
      */
-    entriesReversed(highestKey?: K, reusedArray?: (K | V)[], skipHighest?: boolean): IterableIterator<[K, V]> {
+    async entriesReversed(highestKey?: K, reusedArray?: (K | V)[], skipHighest?: boolean): Promise<IterableIterator<[K, V]>> {
         if (highestKey === undefined) {
-            highestKey = this.maxKey()
+            highestKey = await this.maxKey()
             skipHighest = undefined
             if (highestKey === undefined)
                 return iterator<[K, V]>() // collection is empty
         }
-        var { nodequeue, nodeindex, leaf } = this.findPath(highestKey) || this.findPath(this.maxKey())!
+        let { nodequeue, nodeindex, leaf } = await this.findPath(highestKey) || (await this.findPath(await this.maxKey()))!
         if(!(!nodequeue[0] || leaf === nodequeue[0][nodeindex[0]])) {
             throw new Error("wat?")
         }
-        var i = leaf.indexOf(highestKey, 0, this.compare)
+        let i = leaf.indexOf(highestKey, 0, this.compare)
         if (!(skipHighest || this.compare(leaf.keys[i], highestKey) > 0))
             i++
-        var state = reusedArray !== undefined ? 1 : 0
+        let state = reusedArray !== undefined ? 1 : 0
 
-        return iterator<[K, V]>(() => {
+        return iterator<[K, V]>(async () => {
             jump: for (; ;) {
                 switch (state) {
                     case 0:
@@ -346,7 +372,7 @@ export default class BTree<K, V> {
                                 break
                         }
                         for (; level > 0; level--) {
-                            nodequeue[level - 1] = (nodequeue[level][nodeindex[level]] as BNodeInternal<K, V>).children
+                            nodequeue[level - 1] = await (nodequeue[level][nodeindex[level]] as BNodeInternal<K, V>).getAllChildren()
                             nodeindex[level - 1] = nodequeue[level - 1].length - 1
                         }
                         leaf = nodequeue[0][nodeindex[0]]
@@ -369,16 +395,16 @@ export default class BTree<K, V> {
      * such that nodequeue[L-1] === nodequeue[L][nodeindex[L]].children.
      * (However inside this function the order is reversed.)
      */
-    private findPath(key?: K): { nodequeue: BNode<K, V>[][], nodeindex: number[], leaf: BNode<K, V> } | undefined {
-        var nextnode = this.root
-        var nodequeue: BNode<K, V>[][], nodeindex: number[]
+    private async findPath(key?: K): Promise<{ nodequeue: BNode<K, V>[][]; nodeindex: number[]; leaf: BNode<K, V> } | undefined> {
+        let nextnode = await this.getRoot()
+        let nodequeue: BNode<K, V>[][], nodeindex: number[]
 
         if (nextnode.isLeaf) {
             nodequeue = EmptyArray, nodeindex = EmptyArray // avoid allocations
         } else {
             nodequeue = [], nodeindex = []
-            for (var d = 0; !nextnode.isLeaf; d++) {
-                nodequeue[d] = (nextnode as BNodeInternal<K, V>).children
+            for (let d = 0; !nextnode.isLeaf; d++) {
+                nodequeue[d] = await (nextnode as BNodeInternal<K, V>).getAllChildren()
                 nodeindex[d] = key === undefined ? 0 : nextnode.indexOf(key, 0, this.compare)
                 if (nodeindex[d] >= nodequeue[d].length)
                     return // first key > maxKey()
@@ -403,12 +429,12 @@ export default class BTree<K, V> {
      * @param onlyOther Callback invoked for all keys only present in `other`.
      * @param different Callback invoked for all keys with differing values.
      */
-    diffAgainst<R>(
+    async diffAgainst<R>(
         other: BTree<K, V>,
         onlyThis?: (k: K, v: V) => { break?: R } | void,
         onlyOther?: (k: K, v: V) => { break?: R } | void,
         different?: (k: K, vThis: V, vOther: V) => { break?: R } | void
-    ): R | undefined {
+    ): Promise<R | undefined> {
         if (other.compare !== this.compare) {
             throw new Error("Tree comparators are not the same.")
         }
@@ -418,8 +444,8 @@ export default class BTree<K, V> {
                 return undefined
             // If one tree is empty, everything will be an onlyThis/onlyOther.
             if (this.isEmpty)
-                return onlyOther === undefined ? undefined : BTree.stepToEnd(BTree.makeDiffCursor(other), onlyOther)
-            return onlyThis === undefined ? undefined : BTree.stepToEnd(BTree.makeDiffCursor(this), onlyThis)
+                return onlyOther === undefined ? undefined : BTree.stepToEnd(await BTree.makeDiffCursor(other), onlyOther)
+            return onlyThis === undefined ? undefined : BTree.stepToEnd(await BTree.makeDiffCursor(this), onlyThis)
         }
 
         // Cursor-based diff algorithm is as follows:
@@ -441,8 +467,8 @@ export default class BTree<K, V> {
         // are identical by value (and possibly by reference) will be visited *at the same time* by the cursors.
         // This removes the possibility of emitting incorrect diffs, as well as allowing for skipping shared nodes.
         const { compare } = this
-        const thisCursor = BTree.makeDiffCursor(this)
-        const otherCursor = BTree.makeDiffCursor(other)
+        const thisCursor = await BTree.makeDiffCursor(this)
+        const otherCursor = await BTree.makeDiffCursor(other)
         // It doesn't matter how thisSteppedLast is initialized.
         // Step order is only used when either cursor is at a leaf, and cursors always start at a node.
         let thisSuccess = true, otherSuccess = true, prevCursorOrder = BTree.compare(thisCursor, otherCursor, compare)
@@ -491,34 +517,34 @@ export default class BTree<K, V> {
                 const nodeOther = otherInternalSpine[lastOther][otherLevelIndices[lastOther]]
                 if (nodeOther === nodeThis) {
                     prevCursorOrder = 0
-                    thisSuccess = BTree.step(thisCursor, true)
-                    otherSuccess = BTree.step(otherCursor, true)
+                    thisSuccess = await BTree.step(thisCursor, true)
+                    otherSuccess = await BTree.step(otherCursor, true)
                     continue
                 }
             }
             prevCursorOrder = cursorOrder
             if (cursorOrder < 0) {
-                thisSuccess = BTree.step(thisCursor)
+                thisSuccess = await BTree.step(thisCursor)
             } else {
-                otherSuccess = BTree.step(otherCursor)
+                otherSuccess = await BTree.step(otherCursor)
             }
         }
 
         if (thisSuccess && onlyThis)
-            return BTree.finishCursorWalk(thisCursor, otherCursor, compare, onlyThis)
+            return await BTree.finishCursorWalk(thisCursor, otherCursor, compare, onlyThis)
         if (otherSuccess && onlyOther)
-            return BTree.finishCursorWalk(otherCursor, thisCursor, compare, onlyOther)
+            return await BTree.finishCursorWalk(otherCursor, thisCursor, compare, onlyOther)
     }
 
     ///////////////////////////////////////////////////////////////////////////
     // Helper methods for diffAgainst /////////////////////////////////////////
 
-    private static finishCursorWalk<K, V, R>(
+    private static async finishCursorWalk<K, V, R>(
         cursor: DiffCursor<K, V>,
         cursorFinished: DiffCursor<K, V>,
         compareKeys: (a: K, b: K) => number,
         callback: (k: K, v: V) => { break?: R } | void
-    ): R | undefined {
+    ): Promise<R | undefined> {
         const compared = BTree.compare(cursor, cursorFinished, compareKeys)
         if (compared === 0) {
             if (!BTree.step(cursor))
@@ -526,13 +552,13 @@ export default class BTree<K, V> {
         } else if (compared < 0) {
             throw new Error("Cursor walk terminated early")
         }
-        return BTree.stepToEnd(cursor, callback)
+        return await BTree.stepToEnd(cursor, callback)
     }
 
-    private static stepToEnd<K, V, R>(
+    private static async stepToEnd<K, V, R>(
         cursor: DiffCursor<K, V>,
         callback: (k: K, v: V) => { break?: R } | void
-    ): R | undefined {
+    ): Promise<R | undefined> {
         let canStep: boolean = true
         while (canStep) {
             const { leaf, levelIndices, currentKey } = cursor
@@ -542,14 +568,15 @@ export default class BTree<K, V> {
                 if (result && result.break)
                     return result.break
             }
-            canStep = BTree.step(cursor)
+            canStep = await BTree.step(cursor)
         }
         return undefined
     }
 
-    private static makeDiffCursor<K, V>(tree: BTree<K, V>): DiffCursor<K, V> {
-        const { root, height } = tree
-        return { height: height, internalSpine: [[root]], levelIndices: [0], leaf: undefined, currentKey: root.maxKey() }
+    private static async makeDiffCursor<K, V>(tree: BTree<K, V>): Promise<DiffCursor<K, V>> {
+        const root = await tree.getRoot()
+        let height = await tree.getHeight()
+        return { height: height, internalSpine: [[root]], levelIndices: [0], leaf: undefined, currentKey: await root.maxKey() }
     }
 
     /**
@@ -559,7 +586,7 @@ export default class BTree<K, V> {
      * @param stepToNode If true, the cursor will be advanced to the next node (skipping values)
      * @returns true if the step was completed and false if the step would have caused the cursor to move beyond the end of the tree.
      */
-    private static step<K, V>(cursor: DiffCursor<K, V>, stepToNode: boolean = false): boolean {
+    private static async step<K, V>(cursor: DiffCursor<K, V>, stepToNode: boolean = false): Promise<boolean> {
         const { internalSpine, levelIndices, leaf } = cursor
         if (stepToNode || leaf) {
             const levelsLength = levelIndices.length
@@ -587,7 +614,7 @@ export default class BTree<K, V> {
                             internalSpine.splice(levelIndexWalkBack + 1, spineLength - levelIndexWalkBack)
                         // Move to new internal node
                         const nodeIndex = --levelIndices[levelIndexWalkBack]
-                        cursor.currentKey = internalSpine[levelIndexWalkBack][nodeIndex].maxKey()
+                        cursor.currentKey = await internalSpine[levelIndexWalkBack][nodeIndex].maxKey()
                         return true
                     }
                     levelIndexWalkBack--
@@ -610,11 +637,11 @@ export default class BTree<K, V> {
                 const valueIndex = levelIndices[nextLevel] = node.values.length - 1
                 cursor.currentKey = node.keys[valueIndex]
             } else {
-                const children = (node as BNodeInternal<K, V>).children
+                const children = await (node as BNodeInternal<K, V>).getAllChildren()
                 internalSpine[nextLevel] = children
                 const childIndex = children.length - 1
                 levelIndices[nextLevel] = childIndex
-                cursor.currentKey = children[childIndex].maxKey()
+                cursor.currentKey = await children[childIndex].maxKey()
             }
             return true
         }
@@ -649,10 +676,10 @@ export default class BTree<K, V> {
 
     /** Returns a new iterator for iterating the keys of each pair in ascending order.
      *  @param firstKey: Minimum key to include in the output. */
-    keys(firstKey?: K): IterableIterator<K> {
-        var it = this.entries(firstKey, ReusedArray)
-        return iterator<K>(() => {
-            var n: IteratorResult<any> = it.next()
+    async keys(firstKey?: K): Promise<IterableIterator<K>> {
+        let it = await this.entries(firstKey, ReusedArray)
+        return iterator<K>(async () => {
+            let n: IteratorResult<any> = it.next()
             if (n.value) n.value = n.value[0]
             return n
         })
@@ -660,118 +687,91 @@ export default class BTree<K, V> {
 
     /** Returns a new iterator for iterating the values of each pair in order by key.
      *  @param firstKey: Minimum key whose associated value is included in the output. */
-    values(firstKey?: K): IterableIterator<V> {
-        var it = this.entries(firstKey, ReusedArray)
-        return iterator<V>(() => {
-            var n: IteratorResult<any> = it.next()
+    async values(firstKey?: K): Promise<IterableIterator<V>> {
+        let it = await this.entries(firstKey, ReusedArray)
+        return iterator<V>(async () => {
+            let n: IteratorResult<any> = it.next()
             if (n.value) n.value = n.value[1]
             return n
         })
     }
 
     /** Gets the lowest key in the tree. Complexity: O(log size) */
-    minKey(): K | undefined { return this.root.minKey() }
+    async minKey(): Promise<K | undefined> { return await (await this.getRoot()).minKey() }
 
     /** Gets the highest key in the tree. Complexity: O(1) */
-    maxKey(): K | undefined { return this.root.maxKey() }
-
-    /** Quickly clones the tree by marking the root node as shared.
-     *  Both copies remain editable. When you modify either copy, any
-     *  nodes that are shared (or potentially shared) between the two
-     *  copies are cloned so that the changes do not affect other copies.
-     *  This is known as copy-on-write behavior, or "lazy copying". */
-    clone(): BTree<K, V> {
-        this.root.isShared = true
-        var result = new BTree<K, V>(this.compare, undefined, this.maxNodeSize)
-        result.root = this.root
-        result.size = this.size
-        return result
-    }
-
-    /** Performs a greedy clone, immediately duplicating any nodes that are
-     *  not currently marked as shared, in order to avoid marking any nodes
-     *  as shared.
-     *  @param force Clone all nodes, even shared ones.
-     */
-    greedyClone(force?: boolean): BTree<K, V> {
-        var result = new BTree<K, V>(this.compare, undefined, this.maxNodeSize)
-        result.root = this.root.greedyClone(force)
-        result.size = this.size
-        return result
-    }
+    async maxKey(): Promise<K | undefined> { return await (await this.getRoot()).maxKey() }
 
     /** Gets an array filled with the contents of the tree, sorted by key */
-    toArray(maxLength: number = 0x7FFFFFFF): [K, V][] {
-        let min = this.minKey(), max = this.maxKey()
+    async toArray(maxLength: number = 0x7FFFFFFF): Promise<[K, V][]> {
+        let min = await this.minKey()
+        let max = await this.maxKey()
         if (min !== undefined)
-            return this.getRange(min, max!, true, maxLength)
+            return await this.getRange(min, max!, true, maxLength)
         return []
     }
 
     /** Gets an array of all keys, sorted */
-    keysArray() {
-        var results: K[] = []
-        this.root.forRange(this.minKey()!, this.maxKey()!, true, false, this, 0,
+    async keysArray(): Promise<K[]> {
+        let root = await this.getRoot()
+        let results: K[] = []
+        await root.forRange((await this.minKey())!, (await this.maxKey())!, true, false, this, 0,
             (k, v) => { results.push(k) })
         return results
     }
 
     /** Gets an array of all values, sorted by key */
-    valuesArray() {
-        var results: V[] = []
-        this.root.forRange(this.minKey()!, this.maxKey()!, true, false, this, 0,
+    async valuesArray(): Promise<V[]> {
+        let root = await this.getRoot()
+        let results: V[] = []
+        await root.forRange((await this.minKey())!, (await this.maxKey())!, true, false, this, 0,
             (k, v) => { results.push(v) })
         return results
-    }
-
-    /** Gets a string representing the tree's data based on toArray(). */
-    toString() {
-        return this.toArray().toString()
     }
 
     /** Stores a key-value pair only if the key doesn't already exist in the tree.
      * @returns true if a new key was added
     */
-    setIfNotPresent(key: K, value: V): boolean {
-        return this.set(key, value, false)
+    async setIfNotPresent(key: K, value: V): Promise<boolean> {
+        return await this.set(key, value, false)
     }
 
     /** Returns the next pair whose key is larger than the specified key (or undefined if there is none).
      *  If key === undefined, this function returns the lowest pair.
      */
-    nextHigherPair(key: K | undefined): [K, V] | undefined {
-        var it = this.entries(key, ReusedArray)
-        var r = it.next()
+    async nextHigherPair(key: K | undefined): Promise<[K, V] | undefined> {
+        let it = await this.entries(key, ReusedArray)
+        let r = it.next()
         if (!r.done && key !== undefined && this.compare(r.value[0], key) <= 0)
             r = it.next()
         return r.value
     }
 
     /** Returns the next key larger than the specified key (or undefined if there is none) */
-    nextHigherKey(key: K | undefined): K | undefined {
-        var p = this.nextHigherPair(key)
+    async nextHigherKey(key: K | undefined): Promise<K | undefined> {
+        let p = await this.nextHigherPair(key)
         return p ? p[0] : p
     }
 
     /** Returns the next pair whose key is smaller than the specified key (or undefined if there is none).
      *  If key === undefined, this function returns the highest pair.
      */
-    nextLowerPair(key: K | undefined): [K, V] | undefined {
-        var it = this.entriesReversed(key, ReusedArray, true)
+    async nextLowerPair(key: K | undefined): Promise<[K, V] | undefined> {
+        let it = await this.entriesReversed(key, ReusedArray, true)
         return it.next().value
     }
 
     /** Returns the next key smaller than the specified key (or undefined if there is none) */
-    nextLowerKey(key: K | undefined): K | undefined {
-        var p = this.nextLowerPair(key)
+    async nextLowerKey(key: K | undefined): Promise<K | undefined> {
+        let p = await this.nextLowerPair(key)
         return p ? p[0] : p
     }
 
     /** Edits the value associated with a key in the tree, if it already exists.
      * @returns true if the key existed, false if not.
     */
-    changeIfPresent(key: K, value: V): boolean {
-        return this.editRange(key, key, true, (k, v) => ({ value })) !== 0
+    async changeIfPresent(key: K, value: V): Promise<boolean> {
+        return await this.editRange(key, key, true, (k, v) => ({ value })) !== 0
     }
 
     /**
@@ -786,9 +786,10 @@ export default class BTree<K, V> {
      *                  the array reaches this size.
      * @description Computational complexity: O(result.length + log size)
      */
-    getRange(low: K, high: K, includeHigh?: boolean, maxLength: number = 0x3FFFFFF): [K, V][] {
-        var results: [K, V][] = []
-        this.root.forRange(low, high, includeHigh, false, this, 0, (k, v) => {
+    async getRange(low: K, high: K, includeHigh?: boolean, maxLength: number = 0x3FFFFFF): Promise<[K, V][]> {
+        let results: [K, V][] = []
+        let root = await this.getRoot()
+        await root.forRange(low, high, includeHigh, false, this, 0, (k, v) => {
             results.push([k, v])
             return results.length > maxLength ? Break : undefined
         })
@@ -804,15 +805,13 @@ export default class BTree<K, V> {
      * @returns The number of pairs added to the collection.
      * @description Computational complexity: O(pairs.length * log(size + pairs.length))
      */
-    setPairs(pairs: [K, V][], overwrite?: boolean): number {
-        var added = 0
-        for (var i = 0; i < pairs.length; i++)
-            if (this.set(pairs[i][0], pairs[i][1], overwrite))
+    async setPairs(pairs: [K, V][], overwrite?: boolean): Promise<number> {
+        let added = 0
+        for (let i = 0; i < pairs.length; i++)
+            if (await this.set(pairs[i][0], pairs[i][1], overwrite))
                 added++
         return added
     }
-
-    forRange(low: K, high: K, includeHigh: boolean, onFound?: (k: K, v: V, counter: number) => void, initialCounter?: number): number
 
     /**
      * Scans the specified range of keys, in ascending order by key.
@@ -831,8 +830,10 @@ export default class BTree<K, V> {
      *        `{break:R}` to stop early.
      * @description Computational complexity: O(number of items scanned + log size)
      */
-    forRange<R = number>(low: K, high: K, includeHigh: boolean, onFound?: (k: K, v: V, counter: number) => { break?: R } | void, initialCounter?: number): R | number {
-        var r = this.root.forRange(low, high, includeHigh, false, this, initialCounter || 0, onFound)
+    async forRange(low: K, high: K, includeHigh: boolean, onFound?: (k: K, v: V, counter: number) => void, initialCounter?: number): Promise<number>
+    async forRange<R = number>(low: K, high: K, includeHigh: boolean, onFound?: (k: K, v: V, counter: number) => { break?: R } | void, initialCounter?: number): Promise<number | R> {
+        let root = await this.getRoot()
+        let r = await root.forRange(low, high, includeHigh, false, this, initialCounter || 0, onFound)
         return typeof r === "number" ? r : r.break!
     }
 
@@ -865,23 +866,25 @@ export default class BTree<K, V> {
      *   nodes are copied before `onFound` is called. This takes O(n) time
      *   where n is proportional to the amount of shared data scanned.
      */
-    editRange<R = V>(low: K, high: K, includeHigh: boolean, onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): R | number {
-        var root = this.root
-        if (root.isShared)
-            this.root = root = root.clone()
+    async editRange<R = V>(low: K, high: K, includeHigh: boolean, onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): Promise<number | R> {
+        let root = await this.getRoot()
         try {
-            var r = root.forRange(low, high, includeHigh, true, this, initialCounter || 0, onFound)
+            let r = await root.forRange(low, high, includeHigh, true, this, initialCounter || 0, onFound)
             return typeof r === "number" ? r : r.break!
         } finally {
-            while (root.keys.length <= 1 && !root.isLeaf)
-                this.root = root = root.keys.length === 0 ? EmptyLeaf :
-                    (root as any as BNodeInternal<K, V>).children[0]
+            while (root.keys.length <= 1 && !root.isLeaf) {
+                let newRoot = root.keys.length === 0 ?
+                    await EmptyLeaf(this.txState) :
+                    await (root as any as BNodeInternal<K, V>).getChild(0)
+                this.root = newRoot.id
+                this.txState.indexes.setAsModified(this.id)
+            }
         }
     }
 
     /** Same as `editRange` except that the callback is called for all pairs. */
-    editAll<R = V>(onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): R | number {
-        return this.editRange(this.minKey()!, this.maxKey()!, true, onFound, initialCounter)
+    async editAll<R = V>(onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): Promise<number | R> {
+        return await this.editRange((await this.minKey())!, (await this.maxKey())!, true, onFound, initialCounter)
     }
 
     /**
@@ -892,59 +895,32 @@ export default class BTree<K, V> {
      * @returns The number of key-value pairs that were deleted.
      * @description Computational complexity: O(log size + number of items deleted)
      */
-    deleteRange(low: K, high: K, includeHigh: boolean): number {
-        return this.editRange(low, high, includeHigh, DeleteRange)
+    async deleteRange(low: K, high: K, includeHigh: boolean): Promise<number> {
+        return await this.editRange(low, high, includeHigh, DeleteRange)
     }
 
     /** Deletes a series of keys from the collection. */
-    deleteKeys(keys: K[]): number {
-        for (var i = 0, r = 0; i < keys.length; i++)
-            if (this.delete(keys[i]))
+    async deleteKeys(keys: K[]): Promise<number> {
+        let i = 0
+        let r = 0
+        while (i < keys.length) {
+            if (await this.delete(keys[i]))
                 r++
+            i++
+        }
         return r
     }
 
     /** Gets the height of the tree: the number of internal nodes between the
      *  BTree object and its leaf nodes (zero if there are no internal nodes). */
-    get height(): number {
-        let node: BNode<K, V> | undefined = this.root
+    async getHeight(): Promise<number> {
+        let node: BNode<K, V> | undefined = await this.getRoot()
         let height = -1
         while (node) {
             height++
-            node = node.isLeaf ? undefined : (node as unknown as BNodeInternal<K, V>).children[0]
+            node = node.isLeaf ? undefined : await (node as unknown as BNodeInternal<K, V>).getChild(0)
         }
         return height
-    }
-
-    /** Makes the object read-only to ensure it is not accidentally modified.
-     *  Freezing does not have to be permanent; unfreeze() reverses the effect.
-     *  This is accomplished by replacing mutator functions with a function
-     *  that throws an Error. Compared to using a property (e.g. this.isFrozen)
-     *  this implementation gives better performance in non-frozen BTrees.
-     */
-    freeze() {
-        var t = this as any
-        // Note: all other mutators ultimately call set() or editRange()
-        //       so we don't need to override those others.
-        t.clear = t.set = t.editRange = function () {
-            throw new Error("Attempted to modify a frozen BTree")
-        }
-    }
-
-    /** Ensures mutations are allowed, reversing the effect of freeze(). */
-    unfreeze() {
-        // @ts-ignore "The operand of a 'delete' operator must be optional."
-        //            (wrong: delete does not affect the prototype.)
-        delete this.clear
-        // @ts-ignore
-        delete this.set
-        // @ts-ignore
-        delete this.editRange
-    }
-
-    /** Returns true if the tree appears to be frozen. */
-    get isFrozen() {
-        return this.hasOwnProperty('editRange')
     }
 
     /** Scans the tree for signs of serious bugs (e.g. this.size doesn't match
@@ -952,10 +928,155 @@ export default class BTree<K, V> {
      *  Computational complexity: O(number of nodes), i.e. O(size). This method
      *  skips the most expensive test - whether all keys are sorted - but it
      *  does check that maxKey() of the children of internal nodes are sorted. */
-    checkValid() {
-        var size = this.root.checkValid(0, this, 0)
+    async checkValid() {
+        let root = await this.getRoot()
+        let size = await root.checkValid(0, this, 0)
         if(!(size === this.size)) {
             throw new Error(`BTree size (${size}) does not match number of elements (${this.size})`)
+        }
+    }
+}
+
+export type Comparator<K> = (a: K, b: K) => -1 | 0 | 1
+
+
+export class UniqueBTree<K, V> extends BTree<K, V> {
+    propertyPath: string[]
+    subindexes: PropertyBTree<any, any>[]
+
+    constructor(txState: TransactionCollection, id: number, propertyPath: string[], root: number, size: number, maxNodeSize: number, subindexes: number[]) {
+        super(txState, id, root, maxNodeSize, size)
+        this.subindexes = []
+        this.propertyPath = propertyPath
+    }
+
+    getValueOfDoc(doc: any): any {
+        let i = 0
+        let currentValue: any = doc
+        while(i < this.propertyPath.length) {
+            let prop = this.propertyPath[i]
+
+            if(!currentValue) break
+
+            if(prop in currentValue) {
+                if(i === this.propertyPath.length - 1) {
+                    return currentValue[prop]
+                } else {
+                    currentValue = currentValue[prop]
+                    i++
+                    continue
+                }
+            }
+            break
+        }
+    }
+
+    async updateIndex(key: K, value: V): Promise<void> {
+        await this.set(key, value)
+
+        for (let subindex of this.subindexes) {
+            await subindex.updateIndex(value)
+        }
+    }
+
+    async prepareIndexes(doc: any): Promise<void> {
+        let propertyValue = this.getValueOfDoc(doc)
+        let belongsToIndex = propertyValue !== undefined
+        if(belongsToIndex) {
+            let i = 0
+            while(i < this.subindexes.length) {
+                let subindex = this.subindexes[i]
+                await subindex.prepareIndexes(doc)
+            }
+        }
+    }
+}
+
+export class PropertyBTree<K, V> extends BTree <string, UniqueBTree<K, V>> {
+    propertyPath: string[]
+    uniquePropertyPath: string[]
+
+    constructor(txState: TransactionCollection, id: number, propertyPath: string[], root: number, size: number, maxNodeSize: number, uniquePropertyPath: string[]){
+        super(txState, id, root, size, maxNodeSize)
+        this.propertyPath = propertyPath
+        this.uniquePropertyPath = uniquePropertyPath
+    }
+
+    // check if a given value should belong in this index
+    // check if each property in the paths is a property of value
+    shouldAddToIndex(value: V): boolean {
+        let propertyValue = this.getValueOfDoc(value)
+        if(propertyValue !== undefined) return true
+        return false
+    }
+
+    getValueOfDoc(doc: any): any {
+        let i = 0
+        let currentValue: any = doc
+        while(i < this.propertyPath.length) {
+            let prop = this.propertyPath[i]
+
+            if(!currentValue) break
+
+            if(prop in currentValue) {
+                if(i === this.propertyPath.length - 1) {
+                    return currentValue[prop]
+                } else {
+                    currentValue = currentValue[prop]
+                    i++
+                    continue
+                }
+            }
+            break
+        }
+    }
+
+    /*
+     * propertyIndex.getIndexesFor(doc):
+     * - belongsToIndex = this.shouldBelongToIndex(doc)
+     * - let value = doc[this.property]
+     * - if belongsToIndex is null
+     * - return []
+     * - else
+     * - return [[this, value], ...value.getIndexesFor(doc)]
+     */
+
+    async getIndexesFor(doc: any){
+        let propertyValue = this.getValueOfDoc(doc)
+        let belongsToIndex = propertyValue !== undefined
+        if(!belongsToIndex) {
+            return []
+        } else {
+            let valueIndex = await this.get(propertyValue)
+            let valueIndexes = await valueIndex.getIndexesFor(doc)
+            return [[this, propertyValue], ...valueIndexes]
+        }
+    }
+
+    async prepareIndexes(doc: any): Promise<void> {
+        let propertyValue = this.getValueOfDoc(doc)
+        let alreadyExists = await this.has(propertyValue)
+
+        if(!alreadyExists) {
+            let emptyLeafNode = await EmptyLeaf(this.txState)
+            await this.set(propertyValue, new UniqueBTree<string, V>(this.txState, this.id, this.uniquePropertyPath, ))
+        }
+
+        let index = await this.get(propertyValue) as UniqueBTree<string, V>
+        await index.prepareIndexes(doc)
+    }
+
+    async updateIndex(value: V): Promise<void> {
+        if(this.shouldAddToIndex(value)) {
+            let key = this.propertyPath.slice(-1)[0]
+            let alreadyExists = await this.has(key)
+            let keyValue = (value as any)[key]
+            if(!alreadyExists) {
+                await this.set(keyValue, new UniqueBTree<string, V>())
+            }
+
+            let index = await this.get(keyValue) as UniqueBTree<K, V>
+            await index.updateIndex((value as any)[this.valueProp], value)
         }
     }
 }
@@ -996,9 +1117,12 @@ export function simpleComparator(a: any, b: any): number {
 type DiffCursor<K, V> = { height: number, internalSpine: BNode<K, V>[][], levelIndices: number[], leaf: BNode<K, V> | undefined, currentKey: K }
 
 const Break = { break: true }
-const EmptyLeaf = (function () {
-    var n = new BNode<any, any>([],[]); n.isShared = true; return n
-})()
+const EmptyLeaf = async function (txState: TransactionCollection) {
+    let id = await txState.bnodes.allocateID()
+    let n = new BNode<any, any>(txState, id, [],[])
+    await txState.bnodes.set(id, n)
+    return n
+}
 const EmptyArray: any[] = []
 const ReusedArray: any[] = [] // assumed thread-local
 

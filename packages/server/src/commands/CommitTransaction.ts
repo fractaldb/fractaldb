@@ -1,5 +1,5 @@
 import { CommitTransaction, CommitTransactionResponse } from '@fractaldb/shared/operations/CommitTransaction'
-import { Transaction } from '../db/Transaction'
+import { Transaction } from '../layers/transaction/Transaction'
 
 export async function CommitTransactionCommand (op: CommitTransaction, tx: Transaction): Promise<CommitTransactionResponse> {
     await tx.commit()

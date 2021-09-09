@@ -1,0 +1,81 @@
+
+## Index update operation
+We need to get the indexes that the doc may have previously belonged to, and then ensure that they are still valid.
+
+We should remove the doc from any indexes that it should no longer belong to, and add it to any indexes that it should belong to, avoiding redundant set operations.
+
+Operations:
+- create a variable called oldDoc which is a copy of the doc before the update
+- create a variable called newDoc which is a copy of the doc after the update
+- create a variable called oldIndexes which contains the indexes the oldDoc was previously in by calling this.getIndexesFor(oldDoc)
+- create a variable called newIndexes which contains the indexes the newDoc now belongs to by calling this.getIndexesFor(newDoc)
+- find shouldRemove difference between the two sets of indexes using the difference method, using the index ids
+- find shouldAdd difference between the two sets of indexes using the difference method, using the index ids
+- remove the doc from the shouldRemove array
+- add the doc to the shouldAdd array
+- insert the doc into the tx state
+
+
+let oldIndexes = [
+    [Index<1>, 'albert'],
+    [Index<2>, 20],
+    [Index<3>, 'ceo'],
+    [Index<5>, 'insane marketing']
+]
+
+let newIndexes = [
+    [Index<1>, 'lenard'],
+    [Index<2>, 30],
+    [Index<4>, 25000]
+    [Index<5>, 'insane marketing']
+]
+
+---
+
+ shouldRemove = [
+    Index<3>
+] // with this we remove the value
+
+function checkShouldRemove(){
+
+}
+
+let shouldUpdate = [
+    Index<1>
+    Index<2>
+] // with this we remove and set the value
+
+let shouldAdd = [
+    Index<4>
+] // with this we set the value
+
+---
+
+valueIndexes = unique
+propertyIndexes = non-unique and leafs point to unique indexes
+
+collection.getIndexesFor(doc):
+- get rootIndexes
+- indexes = []
+- for each rootIndexes as index
+    - indexes.push(...index.getIndexesFor(doc))
+
+
+propertyIndex.getIndexesFor(doc):
+- belongsToIndex = this.shouldBelongToIndex(doc)
+- let value = doc[this.property]
+- if belongsToIndex is null
+    - return []
+- else
+    - return [[this, value], ...value.getIndexesFor(doc)]
+
+
+
+
+
+valueIndex.getIndexesFor(doc):
+- let value = doc[this.property] // property equals entityID in most cases, but can check another unique value
+- return [[this, value], ...(...this.subindexes.map(subindex => subindex.getIndexesFor(doc)))]
+
+
+shouldAddTo: Index[] = [Itself, ...children, ...subindexes] // etc

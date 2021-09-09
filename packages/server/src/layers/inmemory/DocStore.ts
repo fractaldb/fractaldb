@@ -2,7 +2,7 @@
 // this is the database representation of the docs
 import { Entity } from '@fractaldb/shared/utils/Entity.js'
 import { EntityID } from '@fractaldb/adn/EntityID.js'
-import { FractalServer } from '../Server.js'
+import { FractalServer } from '../../database/Server.js'
 
 export type EntityMap = Map<number, Entity>
 

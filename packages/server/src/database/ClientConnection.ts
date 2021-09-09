@@ -2,7 +2,6 @@ import { Socket } from 'net'
 import EventEmitter from 'events'
 import { OperationResponse, RequestOperation } from '@fractaldb/shared/operations/index.js'
 import { FractalServer } from './Server.js'
-import Session from './Session.js'
 import { randomBytes } from 'crypto'
 
 /**
@@ -15,18 +14,18 @@ import { randomBytes } from 'crypto'
     return result
 }
 
-import { AbortTransactionCommand } from './commands/AbortTransaction.js'
-import { UpdateOneCommand } from './commands/UpdateOne.js'
-import { FindOneCommand } from './commands/FindOne.js'
-import { CountCommand } from './commands/Count.js'
-import { DeleteManyCommand } from './commands/DeleteMany.js'
-import { DeleteOneCommand } from './commands/DeleteOne.js'
-import { FindManyCommand } from './commands/FindMany.js'
-import { InsertManyCommand } from './commands/InsertMany.js'
-import { InsertOneCommand } from './commands/InsertOne.js'
-import { StartTransactionCommand } from './commands/StartTransaction.js'
-import { UpdateManyCommand } from './commands/UpdateMany.js'
-import { CommitTransactionCommand } from './commands/CommitTransaction.js'
+import { AbortTransactionCommand } from '../commands/AbortTransaction.js'
+import { UpdateOneCommand } from '../commands/UpdateOne.js'
+import { FindOneCommand } from '../commands/FindOne.js'
+import { CountCommand } from '../commands/Count.js'
+import { DeleteManyCommand } from '../commands/DeleteMany.js'
+import { DeleteOneCommand } from '../commands/DeleteOne.js'
+import { FindManyCommand } from '../commands/FindMany.js'
+import { InsertManyCommand } from '../commands/InsertMany.js'
+import { InsertOneCommand } from '../commands/InsertOne.js'
+import { StartTransactionCommand } from '../commands/StartTransaction.js'
+import { UpdateManyCommand } from '../commands/UpdateMany.js'
+import { CommitTransactionCommand } from '../commands/CommitTransaction.js'
 import { splitBufferStream, DataTypes } from '@fractaldb/shared/utils/buffer.js'
 
 export default class ClientConnection extends EventEmitter {

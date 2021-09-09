@@ -1,53 +1,61 @@
-import { number } from 'yargs'
-import { Transaction } from './Transaction.js'
+import { DeadLockError, LockExistsError, LockQueue } from '../subcollection/LockQueue.js'
+import { CollectionManager } from '../collection/CollectionManager'
+import { Transaction, WaitingOn } from '../layers/transaction/Transaction.js'
+import { InMemorySubcollection } from '../layers/inmemory/InMemorySubcollection.js'
 
-export class LockExistsError extends Error {
-    code = 'LockExistsError'
-}
+/**
+ * Subcollection is the base class for all subcollections
+ *
+ * There are 3 types of subcollections that use this class:
+ * docs: store the values of a collection
+ * index: store the indexes which index the docs
+ * bnodes: store the bnode data structure used by the index
+ *
+ * Each have their own ID allocations (eg: there can be an index, bnode and docs all with the same ID)
+ *
+ * Subcollection is managed by the Database and keeps track of ID allocations,
+ * free spaces? locks, etc.
+ *
+ * A subcollection is part of a collection.
+ */
+export class SubcollectionManager {
+    collection: CollectionManager
 
-export class DeadLockError extends Error {
-    code = 'DeadLockError'
-}
+    type: string
+    inMemory: InMemorySubcollection
+    // lru
+    // disk
 
-class LockQueue {
-    database: Database
-    resource: number
-    items: { tx: Transaction, acquire: () => void }[] = []
+    lockQueue: Map<number, LockQueue<V>> = new Map()
+    freeIDs: Set<number> = new Set()
+    nextHighestID: number
 
-    constructor(resource: number, database: Database) {
-        this.resource = resource
-        this.database = database
-    }
-
-    get isEmpty() {
-        return this.items.length === 0
-    }
-
-    next() {
-        if(this.items.length === 0) {
-            this.database.lockQueue.delete(this.resource)
+    // function to allocate the next available id
+    async getID(): Promise<number> {
+        if (this.freeIDs.size === 0) {
+            this.nextHighestID++
+            return this.nextHighestID - 1
+        } else {
+            let id = this.freeIDs.values().next().value
+            this.freeIDs.delete(id)
+            return id
         }
-        this.items[0].acquire()
     }
 
-    async push(tx: Transaction) {
-        await new Promise(resolve => {
-            let shouldCallNext = this.isEmpty
-            this.items.push({ tx, acquire: resolve as () => void })
-            if(shouldCallNext) this.next()
-        })
-        return () => { // lock release function
-            this.items.shift()
-            this.next()
-        }
+    async releaseID(id: number) {
+        this.freeIDs.add(id)
     }
-}
 
-export class Database {
 
-    lockQueue: Map<number, LockQueue> = new Map()
+    constructor(collection: CollectionManager, type: string) {
+        this.inMemory = new InMemorySubcollection(this)
+        this.collection = collection
+        this.type = type
+        this.nextHighestID = 0
+    }
 
-    findOrCreateQueue(resource: number) {
+
+    findOrCreateQueue(resource: number): LockQueue {
         if (!this.lockQueue.has(resource)) { // no existing queue, create one
             let queue = new LockQueue(resource, this)
             this.lockQueue.set(resource, queue)
@@ -56,13 +64,6 @@ export class Database {
         return this.lockQueue.get(resource) as LockQueue // return existing queue
     }
 
-    async getIndex(id: number) {
-
-    }
-
-    async getBNode(id: number) {
-
-    }
 
     /**
      * Check if the current transaction has an acquired lock on this resource already
@@ -72,6 +73,7 @@ export class Database {
         if(!queue) return false
         return queue.items[0].tx === tx
     }
+
     /**
      * Try to acquire a lock or throw an error if a deadlock is required
      *
@@ -100,11 +102,13 @@ export class Database {
      *              - do the operation
      *          - release lock
      */
-    async tryToAcquireLock(resource: number, tx: Transaction): Promise<() => void> {
-        tx.waitingOn = resource
+    async tryToAcquireLock(resource: number, tx: Transaction): Promise<void> {
+        tx.waitingOn = [this.collection.name, this.type, resource]
 
         let queue = this.findOrCreateQueue(resource)
-        let releaseLockPromise = queue.push(tx)
+
+        // check if we already have a lock, or in the queue to acquire
+        let lockPromise = queue.push(tx)
 
         if (queue.items[0].tx === tx) {
             throw new LockExistsError(`Lock on resource: ${resource} exists hasLock was not called`)
@@ -124,16 +128,16 @@ export class Database {
                 throw new DeadLockError('Deadlock has occured')
             } else if (currentTx.waitingOn !== undefined) { // waiting on something
                 // get the transaction holding the lock
-                currentQueue = this.lockQueue.get(currentTx.waitingOn) as LockQueue
+                if(this.collection.name !== currentTx.waitingOn[0]) break
+                if(this.type !== currentTx.waitingOn[1]) break
+                currentQueue = this.lockQueue.get(currentTx.waitingOn[2]) as LockQueue
                 continue
             } else {
                 break
             }
         }
 
-
-        let lockPromise = await releaseLockPromise
+        await lockPromise
         tx.waitingOn = undefined
-        return lockPromise
     }
 }

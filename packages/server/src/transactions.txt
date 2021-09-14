@@ -190,3 +190,22 @@ log: {
         [2]
     ]
 }
+
+enum ValueType {
+    data: 0,
+    index: 1,
+    node: 2
+}
+
+value = [
+    power: 16,
+    valueType: ValueType,
+    id: number
+]
+
+if getPower(serialised) != value[0]
+    freeIDs.get(value[0]).add(value[2])
+
+
+    addCommand('freeID', value[2])
+    addCommand('allocateID', value[2])

@@ -58,6 +58,17 @@ Transaction commit method - Transaction.ts
 - if there is no writes:
     - return success to the client
 
+Database startup process
+- general idea -> 1 file that keeps track of the number of the last transaction log file
+- 2 x 8 byte buffers:
+    - one for the number of the last transaction log file
+    - one for the number of the last transaction log file (alternating between the two buffers)
+- 1 file that keeps track of the current transaction log file number
+- 1 file that keeps track of the current transaction log when updating
+- commits should be indempotent
+- database starts up
+    - read the current transaction log file number
+
 Transaction recovery process for when database crashes:
 - have a variable that keeps track of cursor position as integer
 - cursor starts at 0
@@ -73,7 +84,7 @@ Transaction recovery process for when database crashes:
         - apply each command in the transaction to the database store
         - increment cursor by the length of the header + the length of the serialised data + the length of the crc32 checksum
     - if checksum is not valid:
-        - write the rest of the transaction log data corrupt data to a separate file
+        - write the rest of the transaction log data corrupt data to a separate backup file
 
 After transaction has been committed:
     - write the
@@ -105,7 +116,7 @@ db b
 
 Both get a request to insert a new user, both add to the index
 then they recieve eachothers request and add to index
-it would result in the exact same index due to sorting
+it should result in the exact same index due to sorting
 
 
 
@@ -468,3 +479,13 @@ interface SubcollectionState {
 - commit process:
   - go to each collection and call .toCommands(), join the results, and write to log
   -
+
+---
+
+- src
+    - layers
+        - transaction
+        - inmemory
+            -
+        - LRUCache
+        - disk

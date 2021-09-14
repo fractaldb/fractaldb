@@ -1,139 +1,98 @@
-import { DocStore, EntityMap, matchesQuery } from '../inmemory/DocStore.js'
-import { apply, UpdateOperation } from '@fractaldb/shared/utils/JSONPatch.js'
-import { InsertManyResponse } from '@fractaldb/shared/operations/InsertMany.js'
-import { InsertOneResponse } from '@fractaldb/shared/operations/InsertOne.js'
-import { FindOneResponse } from '@fractaldb/shared/operations/FindOne.js'
-import { FindManyResponse } from '@fractaldb/shared/operations/FindMany.js'
-import { UpdateOneResponse } from '@fractaldb/shared/operations/UpdateOne.js'
-import { UpdateManyResponse } from '@fractaldb/shared/operations/UpdateMany.js'
-import { DeleteOneResponse } from '@fractaldb/shared/operations/DeleteOne.js'
-import { DeleteManyResponse } from '@fractaldb/shared/operations/DeleteMany.js'
-import { CountResponse } from '@fractaldb/shared/operations/Count.js'
-import { Entity } from '@fractaldb/shared/utils/Entity.js'
-import { EntityID } from '@fractaldb/adn/EntityID.js'
-import { Database } from '../../database/Database.js'
-
-interface queryOption {
-    projection: any
-    sort: any
-}
+import { FractalServer } from '../../database/Server.js'
+import { Commands, LogCommand } from '../../logcommands/index.js'
+import TransactionDatabase from './TransactionDatabase.js'
+import crc32 from 'crc-32'
 
 export enum TxStatuses {
     ABORTED = 'aborted', // or failed
     COMMITING = 'committing',
     COMMITTED = 'committed',
     ACTIVE = 'active',
-    INACTIVE = 'inactive'
+    // INACTIVE = 'inactive'
 }
 
-interface TransactionInterface {
-    id: string //tx ID
+export type WaitingOn = [database: string, collection: string, subcollection: string, resource: number]
 
-    findOne(query: any, options?: queryOption): Entity | null
-    findMany(query: any, options?: queryOption): Entity[]
-
-    insertOne(doc: any, options?: queryOption): InsertOneResponse
-    insertMany(doc: any[], options?: queryOption): InsertManyResponse
-
-    updateOne(query: any, updateOps: UpdateOperation[], options?: queryOption): UpdateOneResponse
-    updateMany(query: any, updateOps: UpdateOperation[], options?: queryOption): UpdateManyResponse
-
-    deleteOne(query: any, options?: queryOption): DeleteOneResponse
-    deleteMany(query: any, options?: queryOption): DeleteManyResponse
-
-    count(query: any): CountResponse
-
-    findByEntityID(entityID: EntityID): Entity | null
-
-    commit(): void
-
-    abort(): void
-}
-
-type DocMap = Map<number, Entity>
-
-class TransactionState {
-    readCache: DocMap
-    writeDocOps: EntityMap
-    revision: number
-    usedIDs: number[] = []
-    private tx: Transaction
-    database: Database
-
-    constructor(db: Database, tx: Transaction) {
-        this.database = db
-        this.readCache = new Map()
-        this.writeDocOps = new Map()
-        this.revision = 0
-        this.tx = tx
-    }
-
-    reserveID(): number {
-        let id = this.store.nextID()
-        this.usedIDs.push(id)
-        return id
-    }
-
-    findOne(query: any): Entity | null {
-        // add indexing here currently O(log n)
-        let iter = this.writeDocOps.entries()
-        for (const [internalID, doc] of iter) {
-            if(matchesQuery(doc, query)) {
-                return doc
-            }
-
-            return doc
-        }
-        return this.store.findOne(query)
-    }
-
-    updateEntity(entity: Entity) {
-        this.writeDocOps.set(entity.entityID.internalID, entity)
-    }
-
-    createEntity(doc: any = {}): Entity {
-        let entityID = new EntityID(this.reserveID())
-
-        doc.entityID = entityID
-
-        this.writeDocOps.set(entityID.internalID, doc)
-
-        return doc
-    }
-
-    deleteByInternalID(id: number) {
-        this.writeDocOps.delete(id)
-    }
-}
-
-export type WaitingOn = [collection: string, type: string, resource: number]
-
-export class Transaction implements TransactionInterface {
-    database: Database
-    state: TransactionState
-    id: string
+export default class Transaction {
+    id: string // transaction id
+    server: FractalServer
+    databases: Map<string, TransactionDatabase | null> = new Map()
     waitingOn?: WaitingOn
     status: TxStatuses
 
 
-    constructor(db: Database, txID: string) {
-        this.database = db
-        this.state = new TransactionState(db, this)
+    constructor(server: FractalServer, txID: string)  {
+        this.server = server
         this.id = txID
+        this.status = TxStatuses.ACTIVE
+    }
+
+    getOrCreateDatabase(name: string): TransactionDatabase {
+        let db = this.databases.get(name)
+        if (!db) {
+            db = new TransactionDatabase(this, this.server.getOrCreateDatabaseManager(name), name)
+            this.databases.set(name, db)
+        }
+        return db
     }
 
     /**
-     * This function commits the changes to the log, and then to the in-memory database
+     * Transaction commit process
+     * - if there is writes:
+            - find a free log in-memory store to write to
+            - get list of write commands that have been applied in the tranaction
+            - serialize all of the commands/transaction into a single string
+            - generate header with the following data:
+                - tx UUID
+                - length of serialised data
+                - crc32 checksum of serialised data
+            - header is a fixed length buffer/encoding of the above data
+            - write the serialised string to the transaction log for that in-memory log store
+            - apply the write commands to the in-memory log store
+            - unlock all resources
+            - return success to the client
+        - if there is no writes:
+            - unlock all resources
+            - return success to the client
      */
-    commit() {
-        // let docs = this.state.writeDocOps.entries()
+    async commit(): Promise<void> {
+        if(this.status !== TxStatuses.ACTIVE) {
+            throw new Error('Transaction is not active')
+        }
+        this.status = TxStatuses.COMMITING
+        let writes: LogCommand[] = []
+        for (let [name, db] of this.databases.entries()) {
+            if(db === null){
+                writes.push([Commands.DeleteDatabase, name])
+            } else {
+                writes.push(...db.getWrites())
+            }
+        }
 
-        // for (const [id, doc] of docs) {
-        //     this.store.docs.set(id, doc)
-        // }
+        if (writes.length > 0) {
+            let adn = this.server.adn
+            let serialized = Buffer.from(adn.serialize(writes))
+            let length = Buffer.alloc(4)
+            length.writeInt32BE(serialized.length)
+            let checksum = Buffer.alloc(4)
+            checksum.writeInt32BE(crc32.buf(serialized))
+            let logEntry = Buffer.concat([length, checksum, serialized])
+            let inMemoryLog = await this.server.inMemoryLayer.findFreeLogStore()
+            await inMemoryLog.write(logEntry)
+            inMemoryLog.applyTxCommands(writes)
+        }
+
+        /** Unlock all resources */
+        for (let [name, db] of this.databases.entries()) {
+            if(db === null){
+                continue
+            }
+            db.releaseLocks()
+        }
+        this.status = TxStatuses.COMMITTED
     }
 
-    abort() {
-        this.state.availableIDs.push(...this.state.usedIDs)
+    async abort(): Promise<void> {
+
     }
 }

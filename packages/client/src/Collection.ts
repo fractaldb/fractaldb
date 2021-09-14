@@ -7,6 +7,7 @@ import { Operation, OperationResponse } from '@fractaldb/shared/operations/index
 import { Entity } from '@fractaldb/shared/utils/Entity.js'
 import { DataTypes } from '@fractaldb/shared/utils/buffer.js'
 import { FindOneResponse } from '@fractaldb/shared/operations/FindOne.js'
+import { CreateNodeResponse } from '@fractaldb/shared/operations/CreateNode.js'
 
 export default class Collection {
     name: string
@@ -34,6 +35,14 @@ export default class Collection {
         return responsePromise
     }
 
+    async createNode(): Promise<CreateNodeResponse> {
+        return await this.sendMessage({
+            op: 'CreateNode',
+            database: this.database.name,
+            collection: this.name
+        })
+    }
+
 
     find(query: any, options: FindCommand = {}) {
         let command = {
@@ -48,35 +57,35 @@ export default class Collection {
         // return cursor
     }
 
-    async findOne(query: any = {}): Promise<FindOneResponse> {
-        return await this.sendMessage({
-            op: 'FindOne',
-            query,
-            projection: {}
-        })
-    }
+    // async findOne(query: any = {}): Promise<FindOneResponse> {
+    //     return await this.sendMessage({
+    //         op: 'FindOne',
+    //         query,
+    //         projection: {}
+    //     })
+    // }
 
-    async updateMany(query: any = {}, updateOps: UpdateOperation[]){
-        return this.sendMessage({
-            op: 'UpdateMany',
-            query,
-            updateOps
-        })
-    }
+    // async updateMany(query: any = {}, updateOps: UpdateOperation[]){
+    //     return this.sendMessage({
+    //         op: 'UpdateMany',
+    //         query,
+    //         updateOps
+    //     })
+    // }
 
-    async updateOne(query: any = {}, updateOps: UpdateOperation[]){
-        return await this.sendMessage({
-            op: 'UpdateOne',
-            query,
-            updateOps
-        })
-    }
+    // async updateOne(query: any = {}, updateOps: UpdateOperation[]){
+    //     return await this.sendMessage({
+    //         op: 'UpdateOne',
+    //         query,
+    //         updateOps
+    //     })
+    // }
 
-    async insertOne(doc: Entity){
-        return await this.sendMessage({
-            op: 'InsertOne',
-            doc
-        })
-    }
+    // async insertOne(doc: Entity){
+    //     return await this.sendMessage({
+    //         op: 'InsertOne',
+    //         doc
+    //     })
+    // }
 
 }

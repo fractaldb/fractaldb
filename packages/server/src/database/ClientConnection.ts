@@ -3,6 +3,7 @@ import EventEmitter from 'events'
 import { OperationResponse, RequestOperation } from '@fractaldb/shared/operations/index.js'
 import { FractalServer } from './Server.js'
 import { randomBytes } from 'crypto'
+import { splitBufferStream, DataTypes } from '@fractaldb/shared/utils/buffer.js'
 
 /**
  * Generate a UUIDv4
@@ -14,19 +15,20 @@ import { randomBytes } from 'crypto'
     return result
 }
 
-import { AbortTransactionCommand } from '../commands/AbortTransaction.js'
-import { UpdateOneCommand } from '../commands/UpdateOne.js'
-import { FindOneCommand } from '../commands/FindOne.js'
-import { CountCommand } from '../commands/Count.js'
-import { DeleteManyCommand } from '../commands/DeleteMany.js'
-import { DeleteOneCommand } from '../commands/DeleteOne.js'
-import { FindManyCommand } from '../commands/FindMany.js'
-import { InsertManyCommand } from '../commands/InsertMany.js'
-import { InsertOneCommand } from '../commands/InsertOne.js'
-import { StartTransactionCommand } from '../commands/StartTransaction.js'
-import { UpdateManyCommand } from '../commands/UpdateMany.js'
-import { CommitTransactionCommand } from '../commands/CommitTransaction.js'
-import { splitBufferStream, DataTypes } from '@fractaldb/shared/utils/buffer.js'
+// import { AbortTransactionCommand } from '../commands/AbortTransaction.js'
+// import { UpdateOneCommand } from '../commands/UpdateOne.js'
+// import { FindOneCommand } from '../commands/FindOne.js'
+// import { CountCommand } from '../commands/Count.js'
+// import { DeleteManyCommand } from '../commands/DeleteMany.js'
+// import { DeleteOneCommand } from '../commands/DeleteOne.js'
+// import { FindManyCommand } from '../commands/FindMany.js'
+// import { InsertManyCommand } from '../commands/InsertMany.js'
+// import { InsertOneCommand } from '../commands/InsertOne.js'
+// import { StartTransactionCommand } from '../commands/StartTransaction.js'
+// import { UpdateManyCommand } from '../commands/UpdateMany.js'
+// import { CommitTransactionCommand } from '../commands/CommitTransaction.js'
+import { CreateNodeCommand } from '../commands/CreateNode.js'
+
 
 export default class ClientConnection extends EventEmitter {
     socket: Socket
@@ -52,50 +54,51 @@ export default class ClientConnection extends EventEmitter {
 
         let response: OperationResponse
         let shouldCommit = !operation.txID // don't commit if client is managing it's own txID
-
-        let txID = operation.txID ?? uuidV4().toString()
+        let txID = operation.txID ?? uuidV4().toString('hex')
 
         // get the transaction by it's ID if set, otherwise create a new transaction
         let tx = this.server.beginTx(txID)
 
         switch (operation.op) {
-            case 'AbortTransaction':
-                response = await AbortTransactionCommand(operation, tx)
-                break
-            case 'StartTransaction':
-                response = await StartTransactionCommand(operation, tx)
-                shouldCommit = false
-                break
-            case 'CommitTransaction':
-                response = await CommitTransactionCommand(operation, tx)
-                break
-            case 'Count':
-                response = await CountCommand(operation, tx)
-                break
-            case 'DeleteMany':
-                response = await DeleteManyCommand(operation, tx)
-                break
-            case 'DeleteOne':
-                response = await DeleteOneCommand(operation, tx)
-                break
-            case 'FindMany':
-                response = await FindManyCommand(operation, tx)
-                break
-            case 'FindOne':
-                response = await FindOneCommand(operation, tx)
-                break
-            case 'InsertMany':
-                response = await InsertManyCommand(operation, tx)
-                break
-            case 'InsertOne':
-                response = await InsertOneCommand(operation, tx)
-                break
-            case 'UpdateMany':
-                response = await UpdateManyCommand(operation, tx)
-                break
-            case 'UpdateOne':
-                response = await UpdateOneCommand(operation, tx)
-                break
+            // case 'AbortTransaction':
+            //     response = await AbortTransactionCommand(operation, tx)
+            //     break
+            // case 'StartTransaction':
+            //     response = await StartTransactionCommand(operation, tx)
+            //     shouldCommit = false
+            //     break
+            // case 'CommitTransaction':
+            //     response = await CommitTransactionCommand(operation, tx)
+            //     break
+            // case 'Count':
+            //     response = await CountCommand(operation, tx)
+            //     break
+            // case 'DeleteMany':
+            //     response = await DeleteManyCommand(operation, tx)
+            //     break
+            // case 'DeleteOne':
+            //     response = await DeleteOneCommand(operation, tx)
+            //     break
+            // case 'FindMany':
+            //     response = await FindManyCommand(operation, tx)
+            //     break
+            // case 'FindOne':
+            //     response = await FindOneCommand(operation, tx)
+            //     break
+            // case 'InsertMany':
+            //     response = await InsertManyCommand(operation, tx)
+            //     break
+            // case 'InsertOne':
+            //     response = await InsertOneCommand(operation, tx)
+            //     break
+            // case 'UpdateMany':
+            //     response = await UpdateManyCommand(operation, tx)
+            //     break
+            // case 'UpdateOne':
+            //     response = await UpdateOneCommand(operation, tx)
+            //     break
+            case 'CreateNode':
+                response = await CreateNodeCommand(operation, tx)
         }
 
         if(shouldCommit) await tx.commit()

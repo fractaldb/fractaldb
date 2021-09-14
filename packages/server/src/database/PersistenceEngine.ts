@@ -1,3 +1,5 @@
+import InMemoryLogStore from '../layers/inmemory/LogStore/InMemoryLogStore.js'
+import { FractalServer } from './Server.js'
 /*
 
 - update status of in memory log store to persisting
@@ -6,45 +8,48 @@
 
 */
 
-class InMemoryLogStore {
-    future: InMemoryLogStore
-    past: InMemoryLogStore
-    txCount = 0
-    maxTxCount = 250
 
-    set isFull (value: boolean) {
-        this.txCount = value ? this.maxTxCount : this.txCount
-    }
-    get isFull () {
-        return this.txCount === this.maxTxCount
-    }
-}
-
-enum PersistenceEngineStatus {
+export enum PersistenceEngineStatus {
     WAITING,
     PERSISTING
 }
 
-class PersistenceEngine {
-    leastRecentLogStore: InMemoryLogStore;
-    status: PersistenceEngineStatus;
+export default class PersistenceEngine {
+    leastRecentLogStore!: InMemoryLogStore
+    status: PersistenceEngineStatus
+    server: FractalServer
 
-    constructor(logStore: InMemoryLogStore) {
-        this.leastRecentLogStore = logStore;
+    constructor(server: FractalServer) {
+        this.server = server
+        this.status = PersistenceEngineStatus.WAITING
+    }
+
+    /**
+     * Ensure that await storageEngine.initialise() is called before thos
+     */
+    async initialize() {
+        await this.persist()
     }
 
     async persist() {
         while(this.leastRecentLogStore.isFull) {
             this.status = PersistenceEngineStatus.PERSISTING
 
-            await this.write(this.leastRecentLogStore);
-            this.leastRecentLogStore = this.leastRecentLogStore.future;
-            this.leastRecentLogStore.past = null;
+            await this.write(this.leastRecentLogStore)
+
+            // close the file handler for the old log store
+            await this.leastRecentLogStore.close()
+
+            // set the least recent log store to the newer log store
+            this.leastRecentLogStore = this.leastRecentLogStore.newer as InMemoryLogStore
+
+            // unlink the older log store so it can be garbage collected
+            this.leastRecentLogStore.older = undefined
         }
         this.status = PersistenceEngineStatus.WAITING
     }
 
     async write(logStore: InMemoryLogStore) {
-
+        console.log('write called')
     }
 }

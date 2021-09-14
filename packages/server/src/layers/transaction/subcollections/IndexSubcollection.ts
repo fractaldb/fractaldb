@@ -1,6 +1,6 @@
 import { BNode, BNodeInternal } from '@fractaldb/indexing-system/BTreeNode.js'
 import { UniqueBTree, PropertyBTree } from '@fractaldb/indexing-system/BTree.js'
-import { SubcollectionManager } from '../../../subcollection/SubcollectionManager.js'
+import { SubcollectionManager } from '../../../managers/SubcollectionManager.js'
 import { SerializableInterface } from '../interfaces/SerializableInterface.js'
 import { SubcollectionInterface } from '../interfaces/SubcollectionInterface.js'
 import { TransactionCollection} from '../TransactionCollection.js'

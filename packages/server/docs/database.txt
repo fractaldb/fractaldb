@@ -9,7 +9,7 @@
             - nodes.fdb
             - values.fdb
             - indexes.fdb
-            - bnodes.fdb
+            - bnodes-[].fdb
         - Organisations
             - nodes.fdb
             - values.fdb
@@ -21,11 +21,47 @@
             - indexes.fdb
             - bnodes.fdb
 
+1. create a data persistence log & abstract it away from transaction memory
+  - pros:
+    - abstract away from transaction memory
+  - cons:
+    - need to build a separate log system for data persistence
+2. implement powerofvalues system in transaction memory
+  - pros:
+    - no need to create data persistence log
+  - cons:
+    - complex to implement
+    - less abstraction
+    - have to serialise & deserialise values in transaction memory
+3. store old & new power values in same log system
+  - pros: no need to create data persistence log
+  - cons: slightly complex to implement
+
+----
+
+storing id allocations in metadata file
+storing freeids in metadata file
+storing nexthighestid in metadata file
+
+
+[power: 64-bit number, realid: 64-bit number]
+[power: 64-bit number, realid: 64-bit number]
+[power: 64-bit number, realid: 64-bit number]
+[power: 64-bit number, realid: 64-bit number]
+[power: 64-bit number, realid: 64-bit number]
+
+nodes-power-of-2.fdb = 0000|0000|0000|0000|0000
+nodes-power-of-3.fdb = 11110000|00000000|00000000|00000000
+nodes-power-of-4.fdb = 0000000000000000|0000000000000000|0000000000000000|0000000000000000
+
 node: [id, propertiesid, referencesid]
 index: [id, type, path, rootid]
 bnodeleaf: [id, keys: any[], values: id[]]
 bnode: [id, keys: any[], children: bnodeid[]]
 value: [ValueType: 1 byte][value]
+
+[id: number]: [power, realid]
+[id: number]: [power, realid]
 
 I wanna get a node -> [id, propertiesid, referencesid]
 I wanna get nodeindex property -> [id, key] -> [ValueType, value]

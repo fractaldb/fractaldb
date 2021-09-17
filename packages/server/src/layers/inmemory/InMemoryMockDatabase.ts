@@ -1,6 +1,5 @@
 import { FractalServer } from '../../database/Server.js'
 import DatabaseManager from '../../managers/DatabaseManager.js'
-import InMemoryLayer from './InMemoryLayer.js'
 import InMemoryMockCollection from './InMemoryMockCollection.js'
 
 export default class InMemoryMockDatabase {

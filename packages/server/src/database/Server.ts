@@ -7,7 +7,6 @@ import { EntityIDExtension } from '@fractaldb/adn/EntityID.js'
 import DatabaseManager from '../managers/DatabaseManager.js'
 import InMemoryLayer from '../layers/inmemory/InMemoryLayer.js'
 import PersistenceEngine from './PersistenceEngine.js'
-import InMemoryLogStore from '../layers/inmemory/LogStore/InMemoryLogStore.js'
 import { StorageEngine } from '../layers/disk/storage/StorageEngine.js'
 
 interface Config {

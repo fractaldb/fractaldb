@@ -26,7 +26,7 @@
     - abstract away from transaction memory
   - cons:
     - need to build a separate log system for data persistence
-2. implement powerofvalues system in transaction memory
+2. implement powerofvalues system in transaction memory - doing this one
   - pros:
     - no need to create data persistence log
   - cons:

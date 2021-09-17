@@ -24,26 +24,6 @@ export default class InMemoryLogStore {
         this.path = this.server.storageEngine.logEngine.getLogPath(number)
     }
 
-    /**
-     * Gets the database for the given name.
-     * If the value is null, then it means the database has been deleted, so return null
-     * If the value is undefined, then it means the database does not exist in this layer, but it may exist in a lower layer
-     */
-    getDatabase(name: string): InMemoryLogStoreDatabase | null {
-        const database = this.databases.get(name)
-        if (database === undefined) {
-            if (this.older) {
-                return this.older.getDatabase(name)
-            } else {
-                throw new Error('Lower layer not implemented')
-            }
-        } else if (database === null) {
-            return null
-        } else {
-            return database
-        }
-    }
-
     async getHandle(){
         if(this.fileHandle) return this.fileHandle
         this.fileHandle = await open(this.path, 'a+')

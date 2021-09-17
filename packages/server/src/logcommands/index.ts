@@ -1,5 +1,3 @@
-import { BNodeData, IndexData, NodeData, PowerOfBNodeUnionData, PowerOfIndexData, PowerOfValueData } from '../structures/Subcollection'
-
 export enum Commands {
     DeleteDatabase = 0,
     CreateDatabase = 1,

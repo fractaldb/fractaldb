@@ -1,8 +1,8 @@
 import { CollectionManager } from '../../managers/CollectionManager.js'
-import { BNodeData, IndexData, NodeData, PowerOfBNodeUnionData, PowerOfIndexData } from '../../structures/Subcollection.js'
-import TransactionSubcollection from './TransactionSubcollection.js'
+import { BNodeUnionData, IndexData, NodeData, ValueData } from '../../structures/Subcollection.js'
 import { CreateNodeResponse } from '@fractaldb/shared/operations/CreateNode.js'
 import Transaction from './Transaction.js'
+import TransactionSubcollection from './TransactionSubcollection.js'
 /**
  * transaction log contains all the updates for nodes
  * a node's value needs to get updated,
@@ -15,14 +15,10 @@ export default class TransactionCollection {
     collectionManager: CollectionManager
     tx: Transaction
 
-    bnodes: TransactionSubcollection<BNodeData>
-    powerOfBNodeData: Map<number, TransactionSubcollection<PowerOfBNodeUnionData>> = new Map()
-
+    bnodes: TransactionSubcollection<BNodeUnionData>
     indexes: TransactionSubcollection<IndexData>
-    powerOfIndexData: Map<number, TransactionSubcollection<PowerOfIndexData>> = new Map()
-
+    values: TransactionSubcollection<ValueData>
     nodes: TransactionSubcollection<NodeData>
-    powerOfValuesData: Map<number, TransactionSubcollection<PowerOfBNodeUnionData>> = new Map()
 
     constructor(tx: Transaction, collectionManager: CollectionManager, db: string, name: string){
         this.tx = tx
@@ -33,6 +29,7 @@ export default class TransactionCollection {
         this.bnodes = new TransactionSubcollection(this.tx, collectionManager.bnode)
         this.indexes = new TransactionSubcollection(this.tx, collectionManager.index)
         this.nodes = new TransactionSubcollection(this.tx, collectionManager.nodes)
+        this.values = new TransactionSubcollection(this.tx, collectionManager.values)
     }
 
     getWrites() {
@@ -40,6 +37,7 @@ export default class TransactionCollection {
         writes.push(...this.bnodes.getWrites())
         writes.push(...this.indexes.getWrites())
         writes.push(...this.nodes.getWrites())
+        writes.push(...this.values.getWrites())
         return writes
     }
 
@@ -61,7 +59,7 @@ export default class TransactionCollection {
     }
 
     async createIndex(){
-        let indexDataID =
+        let bnode = await this.createBNode()
         let id = await this.indexes.subcollectionManager.allocateID()
         let value: IndexData = [0, 0]
     }
@@ -71,10 +69,10 @@ export default class TransactionCollection {
      */
     async createBNode() {
         let id = await this.bnodes.subcollectionManager.allocateID()
-        let value: BNodeData = [0, 0]
+        // let value: BNodeUnionData = [0, 0]
     }
 
-    async setBNode(id: number, value: PowerOfBNodeUnionData) {
+    async setBNode(id: number, value: BNodeUnionData) {
         await this.bnodes.set(id, value)
     }
 }

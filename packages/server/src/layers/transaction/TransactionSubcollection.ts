@@ -1,35 +1,49 @@
 import { Commands, LogCommand } from '../../logcommands/index.js'
 import { SubcollectionManager } from '../../managers/SubcollectionManager.js'
+import { hasItems } from './interfaces/hasItems.js'
 import Transaction from './Transaction.js'
+import { RecordValue } from '../../structures/DataStructures.js'
+import TransactionPower from './TransactionPower.js'
+import HasItemsAbstract from './abstract/HasItemsAbstract.js'
+import { getUpperPowerOf2 } from '../../utils/getUpperPower.js'
 
 
-export default class TransactionSubcollection<V> {
-
-    items: Map<number, V> = new Map()
+export default class TransactionSubcollection<V> extends HasItemsAbstract<RecordValue> implements hasItems<RecordValue> {
     subcollectionManager: SubcollectionManager<V>
     tx: Transaction
 
-    releaseLockCallbacks: (() => void)[] = []
-    assignedIds: Set<number> = new Set()
-    freeIds: Set<number> = new Set()
+    powers: Map<number, TransactionPower<V> | null> = new Map()
 
     constructor(tx: Transaction, subcollectionManager: SubcollectionManager<V>) {
+        super(subcollectionManager)
         this.tx = tx
         this.subcollectionManager = subcollectionManager
     }
 
+    /**
+     * Helper function that returns the actual value of the id (not the power pointers)
+     */
     async get(id: number): Promise<V | null> {
         await this.subcollectionManager.tryToAcquireLock(id, this.tx, this)
 
         // get item from subcollection state
-        const item = this.items.get(id)
-        if(item !== undefined) { // the value exists or is null so return that
-            return item
-        }
+        let recordValue = this.items.get(id)
 
         // not in local state, try to get from InMemory system
+        if(recordValue == undefined) recordValue = await this.subcollectionManager.inMemoryLayer.get(id)
 
-        return this.subcollectionManager.inMemoryLayer.get(id)
+        if(recordValue) { // the value exists
+            const [power, index] = recordValue
+
+            let value = this.powers.get(power)
+                ?.get(index)
+
+            if(value) return value
+
+            throw new Error('Tried to get a powerValues that was deleted or does not exist')
+        }
+
+        return null // value doesn't exist or has been deleted
     }
 
     getWrites(): LogCommand[] {
@@ -47,30 +61,28 @@ export default class TransactionSubcollection<V> {
         return writes
     }
 
-    releaseLocks(){
-        for (let callback of this.releaseLockCallbacks) {
-            callback()
+    getOrCreatePower(power: number) {
+        let powerClass = this.powers.get(power)
+        if(!powerClass) {
+            powerClass = new TransactionPower(this.tx, this.subcollectionManager.getOrCreatePowerManager(power), power)
+            this.powers.set(power, powerClass)
         }
-        this.releaseLockCallbacks = []
+        return powerClass
     }
 
     async set(id: number, value: V): Promise<void> {
         await this.subcollectionManager.tryToAcquireLock(id, this.tx, this)
 
-        // set item in local state
-        this.items.set(id, value)
-    }
+        let adn = this.tx.server.adn
+        let serialised = adn.serialize(value)
+        let power = getUpperPowerOf2(serialised.length)
 
-    async allocateID(): Promise<number> {
-        // check if there are any free IDs available in this transaction's subcollection, and return the first one
-        if (this.freeIds.size > 0) {
-            let id = this.freeIds.values().next().value as number
-            this.freeIds.delete(id)
-            return id
-        }
-        // if not, then get the subcollection to allocate a new ID to this transaction/subcollection
-        let id = await this.subcollectionManager.allocateID()
-        this.assignedIds.add(id)
-        return id
+        let powerClass = this.getOrCreatePower(power)
+
+        let index = await powerClass.allocateID()
+        powerClass.set(index, value)
+
+        // set item in local state
+        this.items.set(id, [power, index])
     }
 }

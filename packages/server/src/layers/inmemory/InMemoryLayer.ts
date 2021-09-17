@@ -1,5 +1,6 @@
 import { PersistenceEngineStatus } from '../../database/PersistenceEngine.js'
 import { FractalServer } from '../../database/Server.js'
+import DatabaseManager from '../../managers/DatabaseManager.js'
 import InMemoryMockDatabase from './InMemoryMockDatabase.js'
 import InMemoryLogStore from './LogStore/InMemoryLogStore.js'
 
@@ -13,10 +14,10 @@ export default class InMemoryLayer {
         this.server = server
     }
 
-    getOrCreateMockDatabase(databaseName: string): InMemoryMockDatabase {
+    getOrCreateMockDatabase(databaseName: string, databaseManager: DatabaseManager): InMemoryMockDatabase {
         let database = this.databases.get(databaseName)
         if (!database) {
-            database = new InMemoryMockDatabase(this.server, this.server.getOrCreateDatabaseManager(databaseName), databaseName)
+            database = new InMemoryMockDatabase(this.server, databaseManager, databaseName)
             this.databases.set(databaseName, database)
         }
         return database

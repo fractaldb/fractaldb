@@ -1,7 +1,5 @@
 import { FractalServer } from '../../database/Server.js'
-import { BNodeData, BNodePowerUnion, IndexData, IndexPowerData, NodeData, ValuePowerData } from '../../structures/Subcollection.js'
-import InMemoryLayer from './InMemoryLayer.js'
-import InMemoryMockDatabase from './InMemoryMockDatabase.js'
+import { BNodeUnionData, IndexData, NodeData, ValueData } from '../../structures/Subcollection.js'
 import InMemoryMockSubcollection from './InMemoryMockSubcollection.js'
 
 
@@ -11,14 +9,10 @@ export default class InMemoryMockCollection {
     server: FractalServer
     databaseName: string
 
-    bnode: InMemoryMockSubcollection<BNodeData>
-    bnodePower: Map<number, InMemoryMockSubcollection<BNodePowerUnion>> = new Map()
-
+    bnode: InMemoryMockSubcollection<BNodeUnionData>
     index: InMemoryMockSubcollection<IndexData>
-    indexPower: Map<number, InMemoryMockSubcollection<IndexPowerData>> = new Map()
-
     nodes: InMemoryMockSubcollection<NodeData>
-    values: InMemoryMockSubcollection<ValuePowerData>
+    values: InMemoryMockSubcollection<ValueData>
 
     constructor(server: FractalServer, databaseName: string, name: string) {
         this.server = server

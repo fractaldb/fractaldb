@@ -1,6 +1,7 @@
+import { hasItems } from '../../layers/transaction/interfaces/hasItems.js'
 import Transaction, { TxStatuses } from '../../layers/transaction/Transaction.js'
-import TransactionSubcollection from '../../layers/transaction/TransactionSubcollection.js'
 import Deferred from '../../utils/Deferred.js'
+import IDManager from '../abstract/IDManager.js'
 import { SubcollectionManager } from '../SubcollectionManager.js'
 
 export class DeadLockError extends Error {
@@ -10,13 +11,13 @@ export class DeadLockError extends Error {
 export type LockItem = { tx: Transaction, deferred: Deferred<void> }
 
 export class LockQueue<V> {
-    subcollection: SubcollectionManager<V>
+    IDManager: IDManager<V>
     resource: number
     items: LockItem[] = []
 
-    constructor(resource: number, subcollection: SubcollectionManager<V>) {
+    constructor(resource: number, IDManager: IDManager<V>) {
         this.resource = resource
-        this.subcollection = subcollection
+        this.IDManager = IDManager
     }
 
     get isEmpty() {
@@ -25,7 +26,7 @@ export class LockQueue<V> {
 
     next() {
         if(this.items.length === 0) {
-            this.subcollection.lockQueue.delete(this.resource)
+            this.IDManager.lockQueue.delete(this.resource)
         }
         if(this.items[0].tx.status === TxStatuses.ABORTED) {
             this.items.shift()
@@ -35,16 +36,16 @@ export class LockQueue<V> {
         }
     }
 
-    async getLockPromise(subcollection: TransactionSubcollection<V>) {
+    async getLockPromise(hasItems: hasItems<V>) {
         let shouldCallNext = this.isEmpty
-        let lockItem = this.items.find(item => item.tx === subcollection.tx)
+        let lockItem = this.items.find(item => item.tx === hasItems.tx)
         if(!lockItem) {
-            lockItem = { tx: subcollection.tx, deferred: new Deferred<void>()}
+            lockItem = { tx: hasItems.tx, deferred: new Deferred<void>()}
             this.items.push(lockItem)
             if(shouldCallNext) this.next()
         }
         await lockItem.deferred.promise
-        subcollection.releaseLockCallbacks.push(() => { // lock release function
+        hasItems.releaseLockCallbacks.push(() => { // lock release function
             this.items.shift()
             this.next()
         })

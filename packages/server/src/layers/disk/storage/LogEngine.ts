@@ -42,9 +42,9 @@ export default class LogEngine {
         let offset = 0
         let txs: LogCommand[][] = []
         while(offset < data.length){
-            let length = data.readUInt32BE(offset)
+            let length = data.readInt32BE(offset)
             offset += 4
-            let checksum = data.readUInt32BE(offset)
+            let checksum = data.readInt32BE(offset)
             offset += 4
             let adn = data.slice(offset, offset + length)
             offset += length

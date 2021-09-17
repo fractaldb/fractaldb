@@ -9,15 +9,9 @@ export enum ValueTypes {
     node = 1,
     index = 2
 }
-
-export type BNodeLeafValueData = [power: number, valueType: ValueTypes, ValuePowerID: number]
-
-export type NodeData = [PropertyIndexID: number, ReferenceIndexID: number]
-export type BNodeData = [power: number, type: BNodeTypes, BNodePowerID: number]
-
-export type PowerOfBNodeUnionData = PowerOfBNodeLeafData | PowerOfBNodeData
-export type PowerOfBNodeLeafData = [keys: any[], values: BNodeLeafValueData[]]
-export type PowerOfBNodeData = [keys: any[], children: number[]]
-export type PowerOfValueData = any
-export type IndexData = [power: number, indexPowerID: number]
-export type PowerOfIndexData = [type: number, rootBNodeID: number, ...data: any]
+export type NodeData = [propertiesIndex: number, referenceIndex: number]
+export type BNodeUnionData = BNodeLeafData | BNodeInternalData
+export type BNodeLeafData = [type: number, keys: any[], values: number[]]
+export type BNodeInternalData = [type: number, keys: any[], children: number[]]
+export type ValueData = [type: ValueTypes, value: any]
+export type IndexData = [type: number, rootBNode: number, ...data: any]

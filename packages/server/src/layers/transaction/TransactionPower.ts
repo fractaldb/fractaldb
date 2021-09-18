@@ -11,11 +11,10 @@ export default class TransactionPower<V> extends HasItemsAbstract<V> implements 
     power: number
     powerManager: PowerManager<V>
 
-    constructor(tx: Transaction, powerManager: PowerManager<V>, power: number) {
-        super(powerManager)
+    constructor(tx: Transaction, power: number) {
+        super()
         this.tx = tx
         this.power = power
-        this.powerManager = powerManager
     }
 
     async get(index: number): Promise<V|null> {

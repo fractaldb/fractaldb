@@ -6,18 +6,20 @@ import { RecordValue } from '../../structures/DataStructures.js'
 import TransactionPower from './TransactionPower.js'
 import HasItemsAbstract from './abstract/HasItemsAbstract.js'
 import { getUpperPowerOf2 } from '../../utils/getUpperPower.js'
+import InMemoryMockSubcollection from '../inmemory/InMemoryMockSubcollection.js'
+import InMemoryLogStoreSubcollection from '../inmemory/LogStore/InMemoryLogStoreSubcollection.js'
 
 
 export default class TransactionSubcollection<V> extends HasItemsAbstract<RecordValue> implements hasItems<RecordValue> {
-    subcollectionManager: SubcollectionManager<V>
+    subcollection: InMemoryLogStoreSubcollection<V>
     tx: Transaction
 
     powers: Map<number, TransactionPower<V> | null> = new Map()
 
-    constructor(tx: Transaction, subcollectionManager: SubcollectionManager<V>) {
-        super(subcollectionManager)
+    constructor(tx: Transaction, subcollection: InMemoryMockSubcollection<V>) {
+        super(subcollection)
         this.tx = tx
-        this.subcollectionManager = subcollectionManager
+        this.subcollection = subcollection
     }
 
     /**

@@ -1,8 +1,8 @@
-import { CollectionManager } from '../../managers/CollectionManager.js'
 import { BNodeUnionData, IndexData, NodeData, ValueData } from '../../structures/Subcollection.js'
 import { CreateNodeResponse } from '@fractaldb/shared/operations/CreateNode.js'
 import Transaction from './Transaction.js'
 import TransactionSubcollection from './TransactionSubcollection.js'
+import InMemoryMockCollection from '../inmemory/InMemoryMockCollection.js'
 /**
  * transaction log contains all the updates for nodes
  * a node's value needs to get updated,
@@ -12,7 +12,7 @@ export default class TransactionCollection {
 
     name: string
     db: string
-    collectionManager: CollectionManager
+    collection: InMemoryMockCollection
     tx: Transaction
 
     bnodes: TransactionSubcollection<BNodeUnionData>
@@ -20,16 +20,16 @@ export default class TransactionCollection {
     values: TransactionSubcollection<ValueData>
     nodes: TransactionSubcollection<NodeData>
 
-    constructor(tx: Transaction, collectionManager: CollectionManager, db: string, name: string){
+    constructor(tx: Transaction, collection: InMemoryMockCollection, db: string, name: string){
         this.tx = tx
         this.name = name
-        this.collectionManager = collectionManager
+        this.collection = collection
         this.db = db
 
-        this.bnodes = new TransactionSubcollection(this.tx, collectionManager.bnode)
-        this.indexes = new TransactionSubcollection(this.tx, collectionManager.index)
-        this.nodes = new TransactionSubcollection(this.tx, collectionManager.nodes)
-        this.values = new TransactionSubcollection(this.tx, collectionManager.values)
+        this.bnodes = new TransactionSubcollection(this.tx, collection.bnode)
+        this.indexes = new TransactionSubcollection(this.tx, collection.index)
+        this.nodes = new TransactionSubcollection(this.tx, collection.nodes)
+        this.values = new TransactionSubcollection(this.tx, collection.values)
     }
 
     getWrites() {
@@ -51,7 +51,7 @@ export default class TransactionCollection {
      * Create a node in the collection
      */
     async createNode(): Promise<CreateNodeResponse> {
-        let id = await this.nodes.subcollectionManager.allocateID()
+        let id = await this.nodes.allocateID()
         let value: NodeData = [0, 0]
         await this.nodes.set(id, value)
 
@@ -60,7 +60,7 @@ export default class TransactionCollection {
 
     async createIndex(){
         let bnode = await this.createBNode()
-        let id = await this.indexes.subcollectionManager.allocateID()
+        let id = await this.indexes.allocateID()
         let value: IndexData = [0, 0]
     }
 
@@ -68,7 +68,7 @@ export default class TransactionCollection {
      * Create a BNode in the collection, and it's power of BNode
      */
     async createBNode() {
-        let id = await this.bnodes.subcollectionManager.allocateID()
+        let id = await this.bnodes.allocateID()
         // let value: BNodeUnionData = [0, 0]
     }
 

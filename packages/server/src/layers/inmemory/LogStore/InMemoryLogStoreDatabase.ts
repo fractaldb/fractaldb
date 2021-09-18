@@ -5,13 +5,11 @@ import InMemoryLogStoreCollection from './InMemoryLogStoreCollection.js'
 
 export default class InMemoryLogStoreDatabase {
     name: string
-    inMemoryLogStore: InMemoryLogStore
-    databaseManager: DatabaseManager
+    store: InMemoryLogStore
     collections: Map<string, InMemoryLogStoreCollection | null> = new Map()
 
-    constructor(inMemoryLogStore: InMemoryLogStore, name: string) {
-        this.inMemoryLogStore = inMemoryLogStore
-        this.databaseManager = inMemoryLogStore.server.getOrCreateDatabaseManager(name)
+    constructor(store: InMemoryLogStore, name: string) {
+        this.store = store
         this.name = name
     }
 }

@@ -8,10 +8,17 @@ import DatabaseManager from '../managers/DatabaseManager.js'
 import InMemoryLayer from '../layers/inmemory/InMemoryLayer.js'
 import PersistenceEngine from './PersistenceEngine.js'
 import { StorageEngine } from '../layers/disk/storage/StorageEngine.js'
+import LockEngine from './LockSystem.js'
 
 interface Config {
     ADNextensions: ADNExtension[]
 }
+
+/**
+ * Map<string, LockQueue>
+ *
+ * lockMap.set(`[this.db, this.collection, this.subcollection, id].join('.'), new LockQueue)
+ */
 
 export class FractalServer extends EventEmitter {
     server: Server
@@ -19,6 +26,7 @@ export class FractalServer extends EventEmitter {
     databaseManagers: Map<string, DatabaseManager>
     adn: ADN
     transactions: Map<string, Transaction>
+    lockEngine: LockEngine
 
     /**
      * Database server layers, excluding transaction
@@ -42,6 +50,7 @@ export class FractalServer extends EventEmitter {
         this.transactions = new Map()
         this.databaseManagers = new Map()
 
+        this.lockEngine = new LockEngine(this)
         this.inMemoryLayer = new InMemoryLayer(this)
         this.storageEngine = new StorageEngine(this)
         this.persistenceEngine = new PersistenceEngine(this)

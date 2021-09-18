@@ -1,8 +1,7 @@
-import { hasItems } from '../../layers/transaction/interfaces/hasItems.js'
-import Transaction, { TxStatuses } from '../../layers/transaction/Transaction.js'
-import Deferred from '../../utils/Deferred.js'
-import IDManager from '../abstract/IDManager.js'
-import { SubcollectionManager } from '../SubcollectionManager.js'
+import { hasItems } from '../layers/transaction/interfaces/hasItems.js'
+import Transaction, { TxStatuses } from '../layers/transaction/Transaction.js'
+import Deferred from '../utils/Deferred.js'
+import LockEngine from './LockSystem.js'
 
 export class DeadLockError extends Error {
     code = 'DeadLockError'
@@ -10,14 +9,14 @@ export class DeadLockError extends Error {
 
 export type LockItem = { tx: Transaction, deferred: Deferred<void> }
 
-export class LockQueue<V> {
-    IDManager: IDManager<V>
-    resource: number
+export class LockQueue {
+    lockEngine: LockEngine
+    resource: string
     items: LockItem[] = []
 
-    constructor(resource: number, IDManager: IDManager<V>) {
+    constructor(resource: string, lockEngine: LockEngine) {
         this.resource = resource
-        this.IDManager = IDManager
+        this.lockEngine = lockEngine
     }
 
     get isEmpty() {
@@ -25,8 +24,8 @@ export class LockQueue<V> {
     }
 
     next() {
-        if(this.items.length === 0) {
-            this.IDManager.lockQueue.delete(this.resource)
+        if(this.isEmpty) {
+            delete this.lockEngine.locks[this.resource]
         }
         if(this.items[0].tx.status === TxStatuses.ABORTED) {
             this.items.shift()
@@ -36,7 +35,7 @@ export class LockQueue<V> {
         }
     }
 
-    async getLockPromise(hasItems: hasItems<V>) {
+    async getLockPromise(hasItems: hasItems<any>) {
         let shouldCallNext = this.isEmpty
         let lockItem = this.items.find(item => item.tx === hasItems.tx)
         if(!lockItem) {

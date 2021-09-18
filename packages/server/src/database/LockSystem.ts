@@ -1,48 +1,28 @@
-import { DeadLockError, LockQueue } from '../../database/LockQueue.js'
-import Transaction from '../../layers/transaction/Transaction.js'
-import { hasItems } from '../../layers/transaction/interfaces/hasItems.js'
+import { FractalServer } from '../database/Server.js'
+import HasItemsAbstract from '../layers/transaction/abstract/HasItemsAbstract.js'
+import { hasItems } from '../layers/transaction/interfaces/hasItems.js'
+import Transaction from '../layers/transaction/Transaction.js'
+import { DeadLockError, LockQueue } from './LockQueue.js'
 
-export type LockPath = [db: string, collection: string, subcollection: string]
 
-export default abstract class IDManager<V> {
+export default class LockEngine {
 
-    lockQueue: Map<number, LockQueue<V>> = new Map()
-    freeIDs: Set<number> = new Set()
-    nextHighestID: number
-    path: LockPath
-
-    constructor(path: LockPath){
-        this.path = path
-        this.nextHighestID = 0
+    locks: {
+        [key: string]: LockQueue | undefined
     }
 
-    /**
-     * Allocate a new ID
-     */
-    async allocateID(): Promise<number> {
-        if (this.freeIDs.size === 0) {
-            this.nextHighestID++
-            return this.nextHighestID - 1
-        } else {
-            let id = this.freeIDs.values().next().value
-            this.freeIDs.delete(id)
-            return id
+    constructor(server: FractalServer){
+        this.locks = {}
+    }
+
+    findOrCreateQueue(resource: string): LockQueue {
+        let queue = this.locks[resource]
+        if(!queue){ // no existing queue, create one
+            queue = new LockQueue(resource, this)
+            this.locks[resource] = queue
         }
+        return queue
     }
-
-    async releaseID(id: number) {
-        this.freeIDs.add(id)
-    }
-
-    findOrCreateQueue(resource: number): LockQueue<V> {
-        if (!this.lockQueue.has(resource)) { // no existing queue, create one
-            let queue = new LockQueue(resource, this)
-            this.lockQueue.set(resource, queue)
-            return queue
-        }
-        return this.lockQueue.get(resource) as LockQueue<V> // return existing queue
-    }
-
     /**
      * Try to acquire a lock or throw an error if a deadlock is required
      *
@@ -71,8 +51,8 @@ export default abstract class IDManager<V> {
      *              - do the operation
      *          - release lock
      */
-    async tryToAcquireLock(resource: number, tx: Transaction, hasItems: hasItems<V>): Promise<void> {
-        tx.waitingOn = [...this.path, resource]
+    async tryToAcquireLock(resource: string, tx: Transaction, hasItems: hasItems<any>): Promise<void> {
+        tx.waitingOn = resource
 
         let queue = this.findOrCreateQueue(resource)
 
@@ -85,7 +65,7 @@ export default abstract class IDManager<V> {
         // this results in a deadlock that cannot be resolved without cancelling one of the transactions
 
         let currentTx: Transaction
-        let currentQueue: LockQueue<V> = queue
+        let currentQueue: LockQueue = queue
 
         if(currentQueue.items[0].tx !== tx) {
             while (true) {
@@ -94,10 +74,9 @@ export default abstract class IDManager<V> {
                     throw new DeadLockError('Deadlock has occured')
                 } else if (currentTx.waitingOn !== undefined) { // waiting on something
                     // get the transaction holding the lock
-                    if(this.path[0] !== currentTx.waitingOn[0]) break // dn
-                    if(this.path[1] !== currentTx.waitingOn[1]) break // collection
-                    if(this.path[2] !== currentTx.waitingOn[2]) break // subcollection (nodes, index, bnodes, etc)
-                    currentQueue = this.lockQueue.get(currentTx.waitingOn[3]) as LockQueue<V>
+                    if(resource !== currentTx.waitingOn) break
+
+                    currentQueue = this.locks[resource] as LockQueue
                     continue
                 } else {
                     break

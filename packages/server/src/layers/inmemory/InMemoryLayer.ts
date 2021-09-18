@@ -14,11 +14,11 @@ export default class InMemoryLayer {
         this.server = server
     }
 
-    getOrCreateMockDatabase(databaseName: string, databaseManager: DatabaseManager): InMemoryMockDatabase {
-        let database = this.databases.get(databaseName)
+    getOrCreateMockDatabase(db: string): InMemoryMockDatabase {
+        let database = this.databases.get(db)
         if (!database) {
-            database = new InMemoryMockDatabase(this.server, databaseManager, databaseName)
-            this.databases.set(databaseName, database)
+            database = new InMemoryMockDatabase(this.server, db)
+            this.databases.set(db, database)
         }
         return database
     }

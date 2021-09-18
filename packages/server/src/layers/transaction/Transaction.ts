@@ -11,13 +11,11 @@ export enum TxStatuses {
     // INACTIVE = 'inactive'
 }
 
-export type WaitingOn = [database: string, collection: string, subcollection: string, resource: number]
-
 export default class Transaction {
     id: string // transaction id
     server: FractalServer
     databases: Map<string, TransactionDatabase | null> = new Map()
-    waitingOn?: WaitingOn
+    waitingOn?: string // resource that this transaction is waiting on
     status: TxStatuses
 
 
@@ -30,7 +28,7 @@ export default class Transaction {
     getOrCreateDatabase(name: string): TransactionDatabase {
         let db = this.databases.get(name)
         if (!db) {
-            db = new TransactionDatabase(this, this.server.getOrCreateDatabaseManager(name), name)
+            db = new TransactionDatabase(this, this.server.inMemoryLayer.getOrCreateMockDatabase(name), name)
             this.databases.set(name, db)
         }
         return db

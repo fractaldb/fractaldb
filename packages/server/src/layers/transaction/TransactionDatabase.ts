@@ -1,15 +1,16 @@
 import { Commands, LogCommand } from '../../logcommands/index.js'
 import DatabaseManager from '../../managers/DatabaseManager.js'
+import InMemoryMockDatabase from '../inmemory/InMemoryMockDatabase.js'
 import Transaction from './Transaction.js'
 import TransactionCollection from './TransactionCollection.js'
 
 export default class TransactionDatabase {
-    database: DatabaseManager
+    database: InMemoryMockDatabase
     tx: Transaction
     collections: Map<string, TransactionCollection | null> = new Map()
     name: string
 
-    constructor(tx: Transaction, database: DatabaseManager, name: string){
+    constructor(tx: Transaction, database: InMemoryMockDatabase, name: string){
         this.database = database
         this.name = name
         this.tx = tx
@@ -18,7 +19,7 @@ export default class TransactionDatabase {
     getOrCreateCollection(name: string): TransactionCollection {
         let collection = this.collections.get(name)
         if(!collection) {
-            collection = new TransactionCollection(this.tx, this.database.getOrCreateCollectionManager(name), this.name, name)
+            collection = new TransactionCollection(this.tx, this.database.getOrCreateMockCollection(name), this.name, name)
             this.collections.set(name, collection)
         }
         return collection

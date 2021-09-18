@@ -1,14 +1,14 @@
-import IDManager from '../../../managers/abstract/IDManager'
+import ManagesItems from '../../inmemory/LogStore/abstract/ManagesItems'
 
 export default abstract class HasItemsAbstract<V> {
     items: Map<number, V | null> = new Map()
-    manager: IDManager<V>
+    manager: ManagesItems<V>
 
     releaseLockCallbacks: (() => void)[] = []
     assignedIds: Set<number> = new Set()
     freeIds: Set<number> = new Set()
 
-    constructor(manager: IDManager<V>){
+    constructor(manager: ManagesItems<V>){
         this.manager = manager
     }
 

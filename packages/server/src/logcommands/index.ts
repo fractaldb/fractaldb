@@ -8,7 +8,9 @@ export enum Commands {
     SetSubcollectionData = 6,
     DeleteSubcollectionData = 7,
     SetPowerOfData = 8,
-    DeletePowerOfData = 9
+    DeletePowerOfData = 9,
+    InitialiseSubcollection = 10,
+    IncrementSubcollectionHighestID = 11
 }
 
 export type DeleteDatabase = [type: Commands.DeleteDatabase, database: string]
@@ -22,6 +24,9 @@ export type DeleteSubcollectionData = [type: Commands.DeleteSubcollectionData, d
 export type SetPowerOfData = [type: Commands.SetPowerOfData, database: string, collection: string, subcollection: string, power: number, id: number, data: any]
 export type DeletePowerOfData = [type: Commands.DeletePowerOfData, database: string, collection: string, subcollection: string, power: number, id: number]
 
+export type IncrementSubcollectionHighestID = [type: Commands.IncrementSubcollectionHighestID, database: string, collection: string, subcollection: string]
+export type InitialiseSubcollection = [type: Commands.InitialiseSubcollection, database: string, collection: string, subcollection: string, highestID: number, freeIDs: number[]]
+
 export type LogCommand =
     | DeleteDatabase
     | CreateDatabase
@@ -33,3 +38,5 @@ export type LogCommand =
     | DeleteSubcollectionData
     | SetPowerOfData
     | DeletePowerOfData
+    | InitialiseSubcollection
+    | IncrementSubcollectionHighestID

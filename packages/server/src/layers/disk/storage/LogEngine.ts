@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'fs'
 import { resolve as ResolvePath } from 'path'
-import InMemoryLayer from '../../inmemory/InMemoryLayer.js'
-import InMemoryLogStore from '../../inmemory/LogStore/InMemoryLogStore.js'
+import InMemoryLogStore from '../../inMemoryLogStore/InMemoryLogStore.js'
 import { StorageEngine } from './StorageEngine.js'
 import crc32 from 'crc-32'
 import { LogCommand } from '../../../logcommands/index.js'
+import MockLayer from '../../mock/MockLayer.js'
 
 enum SIDES {
     LEFT = 0,
@@ -13,13 +13,13 @@ enum SIDES {
 
 export default class LogEngine {
     storageEngine: StorageEngine
-    inMemoryLayer: InMemoryLayer
+    mockLayer: MockLayer
 
     private highestPersistedIDSide: SIDES = SIDES.LEFT
 
     constructor(storageEngine: StorageEngine){
         this.storageEngine = storageEngine
-        this.inMemoryLayer = this.storageEngine.server.inMemoryLayer
+        this.mockLayer = this.storageEngine.server.mockLayer
     }
 
     async initialize(){
@@ -141,7 +141,7 @@ export default class LogEngine {
             newestLog = newLog
         }
 
-        this.server.inMemoryLayer.mostRecentLogStore = newestLog as InMemoryLogStore
+        this.server.mockLayer.mostRecentLogStore = newestLog as InMemoryLogStore
         this.server.persistenceEngine.leastRecentLogStore = oldestLog as InMemoryLogStore
         this.highestPersistedIDSide = left > right ? SIDES.LEFT : SIDES.RIGHT
     }

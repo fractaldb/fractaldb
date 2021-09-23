@@ -1,15 +1,15 @@
-import DatabaseManager from '../../../managers/DatabaseManager.js'
+import { DatabaseOpts } from '../../interfaces/Options.js'
 import InMemoryLogStore from './InMemoryLogStore.js'
 import InMemoryLogStoreCollection from './InMemoryLogStoreCollection.js'
 
 
 export default class InMemoryLogStoreDatabase {
-    name: string
+    opts: DatabaseOpts
     store: InMemoryLogStore
     collections: Map<string, InMemoryLogStoreCollection | null> = new Map()
 
-    constructor(store: InMemoryLogStore, name: string) {
+    constructor(store: InMemoryLogStore, opts: DatabaseOpts) {
         this.store = store
-        this.name = name
+        this.opts = opts
     }
 }

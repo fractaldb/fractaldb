@@ -1,25 +1,25 @@
+import DatabaseInterface from '../../interfaces/DatabaseInterface.js'
+import { DatabaseOpts } from '../../interfaces/Options.js'
 import { Commands, LogCommand } from '../../logcommands/index.js'
-import DatabaseManager from '../../managers/DatabaseManager.js'
-import InMemoryMockDatabase from '../inmemory/InMemoryMockDatabase.js'
+import MockDatabase from '../mock/MockDatabase.js'
 import Transaction from './Transaction.js'
 import TransactionCollection from './TransactionCollection.js'
-
-export default class TransactionDatabase {
-    database: InMemoryMockDatabase
+export default class TransactionDatabase implements DatabaseInterface {
     tx: Transaction
+    opts: DatabaseOpts
     collections: Map<string, TransactionCollection | null> = new Map()
-    name: string
+    mock: MockDatabase
 
-    constructor(tx: Transaction, database: InMemoryMockDatabase, name: string){
-        this.database = database
-        this.name = name
+    constructor(tx: Transaction, opts: DatabaseOpts, mock: MockDatabase) {
+        this.opts = opts
         this.tx = tx
+        this.mock = mock
     }
 
     getOrCreateCollection(name: string): TransactionCollection {
         let collection = this.collections.get(name)
         if(!collection) {
-            collection = new TransactionCollection(this.tx, this.database.getOrCreateMockCollection(name), this.name, name)
+            collection = new TransactionCollection(this.tx, {...this.opts, collection: name}, this.mock.getOrCreateMockCollection(name))
             this.collections.set(name, collection)
         }
         return collection
@@ -29,7 +29,7 @@ export default class TransactionDatabase {
         let writes: LogCommand[] = []
         for(const [name, collection] of this.collections.entries()) {
             if(collection === null){
-                writes.push([Commands.DeleteCollection, this.database.name, this.name])
+                writes.push([Commands.DeleteCollection, this.opts.database, name])
             } else {
                 writes.push(...collection.getWrites())
             }

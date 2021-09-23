@@ -1,12 +1,14 @@
 import { FileHandle, open } from 'fs/promises'
-import { FractalServer } from '../../../database/Server.js'
-import { Commands, LogCommand } from '../../../logcommands/index.js'
-import AssertUnreachable from '../../../utils/AssertUnreachable.js'
+import { FractalServer } from '../../database/Server.js'
+import { Commands, LogCommand } from '../../logcommands/index.js'
+import AssertUnreachable from '../../utils/AssertUnreachable.js'
 import InMemoryLogStoreCollection from './InMemoryLogStoreCollection.js'
 import InMemoryLogStoreDatabase from './InMemoryLogStoreDatabase.js'
 import InMemoryLogStoreSubcollection from './InMemoryLogStoreSubcollection.js'
+import crc32 from 'crc-32'
+import LayerInterface from '../../interfaces/LayerInterface.js'
 
-export default class InMemoryLogStore {
+export default class InMemoryLogStore implements LayerInterface {
     number: number
     path: string
     fileHandle: FileHandle | null = null
@@ -47,27 +49,40 @@ export default class InMemoryLogStore {
         return this.txCount === this.maxTxCount
     }
 
-    applyTxCommands(commands: LogCommand[]){
+    async applyTxCommands(commands: LogCommand[]){
+        let adn = this.server.adn
+        let serialized = Buffer.from(adn.serialize(commands))
+        let length = Buffer.alloc(4)
+        length.writeInt32BE(serialized.length)
+        let checksum = Buffer.alloc(4)
+        checksum.writeInt32BE(crc32.buf(serialized))
+
+        // buffer that will be written to log file on disk
+        let logEntry = Buffer.concat([length, checksum, serialized])
+
+        // write log entry before applying commands to ensure integrity
+        await this.write(logEntry)
+
         for (const command of commands) {
+            // apply each command to the log store
             this.applyTxCommand(command)
         }
     }
 
-    applyTxCommand(command: LogCommand) {
+    private applyTxCommand(command: LogCommand) {
         switch (command[0]) {
             case Commands.CreateCollection: {
                 let dbname = command[1]
                 let collectionname = command[2]
                 let db = this.databases.get(dbname)
-                let dbManager = this.server.getOrCreateDatabaseManager(dbname)
 
                 if (!db) {
-                    db = new InMemoryLogStoreDatabase(this, dbname)
+                    db = new InMemoryLogStoreDatabase(this, { database: dbname })
                     this.databases.set(dbname, db)
                 }
                 let collection = db.collections.get(collectionname)
                 if (!collection) {
-                    collection = new InMemoryLogStoreCollection(dbManager, this, dbname, collectionname)
+                    collection = new InMemoryLogStoreCollection(this, {database: dbname, collection: collectionname})
                     db.collections.set(collectionname, collection)
                 }
                 return
@@ -76,7 +91,7 @@ export default class InMemoryLogStore {
                 let dbname = command[1]
                 let db = this.databases.get(dbname)
                 if (!db) {
-                    db = new InMemoryLogStoreDatabase(this, dbname)
+                    db = new InMemoryLogStoreDatabase(this, { database: dbname })
                     this.databases.set(dbname, db)
                 }
                 return
@@ -96,15 +111,14 @@ export default class InMemoryLogStore {
                 let dbname = command[1]
                 let collectionname = command[2]
                 let db = this.databases.get(dbname)
-                let dbManager = this.server.getOrCreateDatabaseManager(dbname)
 
                 if(!db) {
-                    db = new InMemoryLogStoreDatabase(this, dbname)
+                    db = new InMemoryLogStoreDatabase(this, { database: dbname })
                     this.databases.set(dbname, db)
                 }
                 let collection = db.collections.get(collectionname)
                 if (!collection) {
-                    collection = new InMemoryLogStoreCollection(dbManager, this, dbname, collectionname)
+                    collection = new InMemoryLogStoreCollection(this, { database: dbname, collection: collectionname })
                     db.collections.set(collectionname, collection)
                 }
                 let powerOfCollection = (collection as any)[command[3]].get(command[4]) as InMemoryLogStoreSubcollection<any>
@@ -119,4 +133,5 @@ export default class InMemoryLogStore {
 
         // return AssertUnreachable(command[0])
     }
+
 }

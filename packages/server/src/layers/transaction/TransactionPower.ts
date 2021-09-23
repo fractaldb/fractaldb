@@ -1,32 +1,37 @@
 import { Commands, LogCommand } from '../../logcommands/index.js'
 import Transaction from './Transaction.js'
 import { hasItems } from './interfaces/hasItems.js'
-import PowerManager from '../../managers/PowerManger.js'
 import HasItemsAbstract from './abstract/HasItemsAbstract.js'
-
-
-export default class TransactionPower<V> extends HasItemsAbstract<V> implements hasItems<V> {
+import PowerInterface from '../../interfaces/PowerInterface.js'
+import { PowerOpts } from '../../interfaces/Options.js'
+import MockPower from '../mock/MockPower.js'
+export default class TransactionPower<V> extends HasItemsAbstract implements hasItems, PowerInterface<V> {
 
     tx: Transaction
-    power: number
-    powerManager: PowerManager<V>
+    opts: PowerOpts
+    mock: MockPower<V>
 
-    constructor(tx: Transaction, power: number) {
-        super()
+    constructor(tx: Transaction, opts: PowerOpts, mock: MockPower<V>) {
+        super(mock)
         this.tx = tx
-        this.power = power
+        this.opts = opts
+        this.mock = mock
     }
 
-    async get(index: number): Promise<V|null> {
-        await this.powerManager.tryToAcquireLock(index, this.tx, this)
+    get server () {
+        return this.tx.server
+    }
 
-        // get item from subcollection state
-        let value = this.items.get(index)
+    async get(id: number): Promise<V | null> {
+        let resource = [this.opts.database, this.opts.collection, this.opts.subcollection, id].join('.')
+        await this.tx.server.lockEngine.tryToAcquireLock(resource, this.tx, this)
 
-        // not in local state, try to get from InMemory system
-        if(value == undefined) value = await this.powerManager.inMemoryLayer.get(index)
-        if(typeof value === 'string') return this.powerManager.server.adn.deserialize(value)
-        return value
+        let value = this.items.get(id)
+        if(value) return this.server.adn.deserialize(value) as V
+        // not in local state, try to get from next layers
+        if(!value) return await this.mock.predicate(layer => layer?.get(id)) ?? null
+
+        return null
     }
 
     getWrites(): LogCommand[] {
@@ -34,10 +39,10 @@ export default class TransactionPower<V> extends HasItemsAbstract<V> implements 
         for (let [id, value] of this.items) {
             writes.push([
                 Commands.SetPowerOfData,
-                this.powerManager.db,
-                this.powerManager.collection,
-                this.powerManager.subcollection,
-                this.power,
+                this.opts.database,
+                this.opts.collection,
+                this.opts.subcollection,
+                this.opts.power,
                 id,
                 value
             ])
@@ -46,6 +51,6 @@ export default class TransactionPower<V> extends HasItemsAbstract<V> implements 
     }
 
     async set(index: number, value: V){
-        this.items.set(index, value)
+        this.items.set(index, this.server.adn.serialize(value))
     }
 }

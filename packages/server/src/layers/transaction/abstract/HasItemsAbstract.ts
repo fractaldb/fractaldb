@@ -1,15 +1,14 @@
-import ManagesItems from '../../inmemory/LogStore/abstract/ManagesItems'
-
-export default abstract class HasItemsAbstract<V> {
-    items: Map<number, V | null> = new Map()
-    manager: ManagesItems<V>
+import AllocatesIDsInterface from '../../../interfaces/AllocatesIDsInterface.js'
+export default abstract class HasItemsAbstract {
+    items: Map<number, string | null> = new Map()
+    allocator: AllocatesIDsInterface
 
     releaseLockCallbacks: (() => void)[] = []
     assignedIds: Set<number> = new Set()
     freeIds: Set<number> = new Set()
 
-    constructor(manager: ManagesItems<V>){
-        this.manager = manager
+    constructor(allocator: AllocatesIDsInterface){
+        this.allocator = allocator
     }
 
     releaseLocks(){
@@ -27,7 +26,7 @@ export default abstract class HasItemsAbstract<V> {
             return id
         }
         // if not, then get the subcollection to allocate a new ID to this transaction/subcollection
-        let id = await this.manager.allocateID()
+        let id = await this.allocator.allocateID()
         this.assignedIds.add(id)
         return id
     }

@@ -4,11 +4,10 @@ import ClientConnection from './ClientConnection.js'
 import Transaction from '../layers/transaction/Transaction.js'
 import { ADN, ADNExtension } from '@fractaldb/adn'
 import { EntityIDExtension } from '@fractaldb/adn/EntityID.js'
-import DatabaseManager from '../managers/DatabaseManager.js'
-import InMemoryLayer from '../layers/inmemory/InMemoryLayer.js'
 import PersistenceEngine from './PersistenceEngine.js'
 import { StorageEngine } from '../layers/disk/storage/StorageEngine.js'
 import LockEngine from './LockSystem.js'
+import MockLayer from '../layers/mock/MockLayer.js'
 
 interface Config {
     ADNextensions: ADNExtension[]
@@ -23,7 +22,6 @@ interface Config {
 export class FractalServer extends EventEmitter {
     server: Server
     connections: Set<ClientConnection>
-    databaseManagers: Map<string, DatabaseManager>
     adn: ADN
     transactions: Map<string, Transaction>
     lockEngine: LockEngine
@@ -31,7 +29,7 @@ export class FractalServer extends EventEmitter {
     /**
      * Database server layers, excluding transaction
      */
-    inMemoryLayer: InMemoryLayer
+    mockLayer: MockLayer
     // LRU TODO
     // DISK TOOD
 
@@ -48,10 +46,9 @@ export class FractalServer extends EventEmitter {
         this.adn = new ADN(config.ADNextensions)
         this.server = net.createServer()
         this.transactions = new Map()
-        this.databaseManagers = new Map()
 
         this.lockEngine = new LockEngine(this)
-        this.inMemoryLayer = new InMemoryLayer(this)
+        this.mockLayer = new MockLayer(this)
         this.storageEngine = new StorageEngine(this)
         this.persistenceEngine = new PersistenceEngine(this)
         this.server.on('connection', socket => this.newConnection(socket))
@@ -60,15 +57,6 @@ export class FractalServer extends EventEmitter {
     async initialize() {
         await this.storageEngine.initialize()
         await this.persistenceEngine.initialize()
-    }
-
-    getOrCreateDatabaseManager(name: string){
-        let manager = this.databaseManagers.get(name)
-        if(!manager){
-            manager = new DatabaseManager(this, name)
-            this.databaseManagers.set(name, manager)
-        }
-        return manager
     }
 
     beginTx(txID: string){

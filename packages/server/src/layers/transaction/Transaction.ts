@@ -1,8 +1,7 @@
 import { FractalServer } from '../../database/Server.js'
+import LayerInterface from '../../interfaces/LayerInterface.js'
 import { Commands, LogCommand } from '../../logcommands/index.js'
 import TransactionDatabase from './TransactionDatabase.js'
-import crc32 from 'crc-32'
-
 export enum TxStatuses {
     ABORTED = 'aborted', // or failed
     COMMITING = 'committing',
@@ -11,13 +10,12 @@ export enum TxStatuses {
     // INACTIVE = 'inactive'
 }
 
-export default class Transaction {
+export default class Transaction implements LayerInterface {
     id: string // transaction id
     server: FractalServer
     databases: Map<string, TransactionDatabase | null> = new Map()
     waitingOn?: string // resource that this transaction is waiting on
     status: TxStatuses
-
 
     constructor(server: FractalServer, txID: string)  {
         this.server = server
@@ -28,7 +26,7 @@ export default class Transaction {
     getOrCreateDatabase(name: string): TransactionDatabase {
         let db = this.databases.get(name)
         if (!db) {
-            db = new TransactionDatabase(this, this.server.inMemoryLayer.getOrCreateMockDatabase(name), name)
+            db = new TransactionDatabase(this, { database: name }, this.server.mockLayer.getOrCreateMockDatabase(name))
             this.databases.set(name, db)
         }
         return db
@@ -68,16 +66,8 @@ export default class Transaction {
         }
 
         if (writes.length > 0) {
-            let adn = this.server.adn
-            let serialized = Buffer.from(adn.serialize(writes))
-            let length = Buffer.alloc(4)
-            length.writeInt32BE(serialized.length)
-            let checksum = Buffer.alloc(4)
-            checksum.writeInt32BE(crc32.buf(serialized))
-            let logEntry = Buffer.concat([length, checksum, serialized])
-            let inMemoryLog = await this.server.inMemoryLayer.findFreeLogStore()
-            await inMemoryLog.write(logEntry)
-            inMemoryLog.applyTxCommands(writes)
+            let inMemoryLog = await this.server.mockLayer.findFreeLogStore()
+            await inMemoryLog.applyTxCommands(writes)
         }
 
         /** Unlock all resources */

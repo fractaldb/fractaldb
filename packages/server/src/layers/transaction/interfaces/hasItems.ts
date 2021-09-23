@@ -1,8 +1,8 @@
 import Transaction from '../Transaction'
 
 
-export interface hasItems<V> {
-    items: Map<number, V | null>
+export interface hasItems {
+    items: Map<number, string | null>
     tx: Transaction
 
     releaseLockCallbacks: (() => void)[]

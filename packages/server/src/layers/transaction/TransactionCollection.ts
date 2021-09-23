@@ -2,65 +2,64 @@ import { BNodeUnionData, IndexData, NodeData, ValueData } from '../../structures
 import { CreateNodeResponse } from '@fractaldb/shared/operations/CreateNode.js'
 import Transaction from './Transaction.js'
 import TransactionSubcollection from './TransactionSubcollection.js'
-import InMemoryMockCollection from '../inmemory/InMemoryMockCollection.js'
+import CollectionInterface from '../../interfaces/CollectionInterface.js'
+import { CollectionOpts } from '../../interfaces/Options.js'
+import MockCollection from '../mock/MockCollection.js'
 /**
  * transaction log contains all the updates for nodes
  * a node's value needs to get updated,
  */
 
-export default class TransactionCollection {
-
-    name: string
-    db: string
-    collection: InMemoryMockCollection
+export default class TransactionCollection implements CollectionInterface {
     tx: Transaction
+    opts: CollectionOpts
+    mock: MockCollection
 
-    bnodes: TransactionSubcollection<BNodeUnionData>
-    indexes: TransactionSubcollection<IndexData>
-    values: TransactionSubcollection<ValueData>
-    nodes: TransactionSubcollection<NodeData>
+    bnode: TransactionSubcollection<BNodeUnionData>
+    index: TransactionSubcollection<IndexData>
+    value: TransactionSubcollection<ValueData>
+    node: TransactionSubcollection<NodeData>
 
-    constructor(tx: Transaction, collection: InMemoryMockCollection, db: string, name: string){
+    constructor(tx: Transaction, opts: CollectionOpts, mock: MockCollection){
         this.tx = tx
-        this.name = name
-        this.collection = collection
-        this.db = db
+        this.opts = opts
+        this.mock = mock
 
-        this.bnodes = new TransactionSubcollection(this.tx, collection.bnode)
-        this.indexes = new TransactionSubcollection(this.tx, collection.index)
-        this.nodes = new TransactionSubcollection(this.tx, collection.nodes)
-        this.values = new TransactionSubcollection(this.tx, collection.values)
+        this.bnode = new TransactionSubcollection(this.tx, {...opts, subcollection: 'bnode'}, mock.bnode)
+        this.index = new TransactionSubcollection(this.tx, {...opts, subcollection: 'index'}, mock.index)
+        this.node = new TransactionSubcollection(this.tx, {...opts, subcollection: 'node'}, mock.node)
+        this.value = new TransactionSubcollection(this.tx, {...opts, subcollection: 'value'}, mock.value)
     }
 
     getWrites() {
         let writes = []
-        writes.push(...this.bnodes.getWrites())
-        writes.push(...this.indexes.getWrites())
-        writes.push(...this.nodes.getWrites())
-        writes.push(...this.values.getWrites())
+        writes.push(...this.bnode.getWrites())
+        writes.push(...this.index.getWrites())
+        writes.push(...this.node.getWrites())
+        writes.push(...this.value.getWrites())
         return writes
     }
 
     releaseLocks() {
-        this.bnodes.releaseLocks()
-        this.indexes.releaseLocks()
-        this.nodes.releaseLocks()
+        this.bnode.releaseLocks()
+        this.index.releaseLocks()
+        this.node.releaseLocks()
     }
 
     /**
      * Create a node in the collection
      */
     async createNode(): Promise<CreateNodeResponse> {
-        let id = await this.nodes.allocateID()
+        let id = await this.node.allocateID()
         let value: NodeData = [0, 0]
-        await this.nodes.set(id, value)
+        await this.node.setActual(id, value)
 
-        return {db: this.db, collection: this.name, id, properties: value[0], references: value[1]}
+        return {database: this.opts.database, collection: this.opts.collection, id, properties: value[0], references: value[1]}
     }
 
     async createIndex(){
         let bnode = await this.createBNode()
-        let id = await this.indexes.allocateID()
+        let id = await this.index.allocateID()
         let value: IndexData = [0, 0]
     }
 
@@ -68,11 +67,11 @@ export default class TransactionCollection {
      * Create a BNode in the collection, and it's power of BNode
      */
     async createBNode() {
-        let id = await this.bnodes.allocateID()
+        let id = await this.bnode.allocateID()
         // let value: BNodeUnionData = [0, 0]
     }
 
     async setBNode(id: number, value: BNodeUnionData) {
-        await this.bnodes.set(id, value)
+        await this.bnode.setActual(id, value)
     }
 }

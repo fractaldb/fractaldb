@@ -1,4 +1,4 @@
-import InMemoryLogStore from '../layers/inmemory/LogStore/InMemoryLogStore.js'
+import InMemoryLogStore from '../layers/inMemoryLogStore/InMemoryLogStore.js'
 import { FractalServer } from './Server.js'
 /*
 

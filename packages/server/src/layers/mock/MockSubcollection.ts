@@ -6,6 +6,9 @@ import InMemoryLogStoreDatabase from '../inMemoryLogStore/InMemoryLogStoreDataba
 import InMemoryLogStoreCollection from '../inMemoryLogStore/InMemoryLogStoreCollection.js'
 import { SubcollectionOpts } from '../../interfaces/Options.js'
 import AllocatesIDsInterface from '../../interfaces/AllocatesIDsInterface.js'
+import InMemoryLogStoreSubcollection from '../inMemoryLogStore/InMemoryLogStoreSubcollection.js'
+import ManagesIDAllocation from '../../interfaces/ManagesIDAllocation.js'
+import { Commands, IncrementSubcollectionHighestID, InitialiseSubcollection } from '../../logcommands/commands.js'
 
 export default class MockSubcollection<V> implements AllocatesIDsInterface {
     server: FractalServer
@@ -17,8 +20,8 @@ export default class MockSubcollection<V> implements AllocatesIDsInterface {
         this.opts = opts
     }
 
-    predicate<X>(cb: (layer?: SubcollectionInterface<V>) => X){
-        let log : InMemoryLogStore | undefined = this.mockLayer.mostRecentLogStore
+    predicate<X>(cb: (layer?: SubcollectionInterface<V>) => X, startFrom?: InMemoryLogStore ){
+        let log : InMemoryLogStore | undefined = startFrom ?? this.mockLayer.mostRecentLogStore
 
         while(log) { // there is an older log store, so we need to check it for the same item
             let layer = this.getThisLayer(log)
@@ -34,11 +37,8 @@ export default class MockSubcollection<V> implements AllocatesIDsInterface {
         throw new Error('Disk layer not yet implemented')
     }
 
-    createLayerInMostRecentLogStore() {
+    async getOrInitialiseSubcollectionInMostRecentLogStore() {
         let log = this.mockLayer.mostRecentLogStore
-
-        // get the oldest layer in order to initialise the new layer
-        let oldestLayer = this.predicate<SubcollectionInterface<V> | undefined>(layer => layer)
 
         let db = log.databases.get(this.opts.database)
         if (!db) {
@@ -50,12 +50,19 @@ export default class MockSubcollection<V> implements AllocatesIDsInterface {
             collection = new InMemoryLogStoreCollection(log, { database: this.opts.database, collection: this.opts.collection })
             db.collections.set(this.opts.collection, collection)
         }
-        let subcollection = collection[this.opts.subcollection] as SubcollectionInterface<V>
-
-        if(subcollection !== oldestLayer) {
-
+        let subcollection = collection[this.opts.subcollection] as unknown as InMemoryLogStoreSubcollection<V>
+        if(!subcollection.initialised) {
+            let nextMostRecent = log.older ? this.predicate<ManagesIDAllocation | undefined>(layer => layer instanceof ManagesIDAllocation ? layer : undefined, log.older) : undefined
+            if(nextMostRecent) { // initialise based on last known values
+                subcollection.freeIDs = new Set(nextMostRecent.freeIDs)
+                subcollection.usedIDs = new Set(nextMostRecent.usedIDs)
+                subcollection.highestID = nextMostRecent.highestID
+            } // else just use the defaults
+            let command: InitialiseSubcollection = [Commands.InitialiseSubcollection, this.opts.database, this.opts.collection, this.opts.subcollection, subcollection.highestID, [...subcollection.freeIDs, ...subcollection.usedIDs]]
+            await log.applyTxCommands([command])
+            subcollection.initialised = true
         }
-
+        return subcollection
     }
 
     getOrCreateMockPower(power: number): MockPower<V> {
@@ -72,7 +79,21 @@ export default class MockSubcollection<V> implements AllocatesIDsInterface {
     }
 
     async allocateID(): Promise<number> {
-        throw new Error('Not yet implemented')
+        let latest = await this.getOrInitialiseSubcollectionInMostRecentLogStore()
+
+        if(latest.freeIDs.size === 0) {
+            // log the fact that we're incrementing the highest ID, this is considered a write command
+            let command: IncrementSubcollectionHighestID = [Commands.IncrementSubcollectionHighestID, this.opts.database, this.opts.collection, this.opts.subcollection]
+            await this.mockLayer.mostRecentLogStore.applyTxCommands([command])
+            let id = ++latest.highestID
+            latest.usedIDs.add(id)
+            return id
+        } else {
+            let id = [...latest.freeIDs][0]
+            latest.freeIDs.delete(id)
+            latest.usedIDs.add(id)
+            return id
+        }
     }
 
     getThisLayer(older: InMemoryLogStore) {

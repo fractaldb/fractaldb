@@ -1,6 +1,6 @@
 import { FractalServer } from '../../database/Server.js'
 import LayerInterface from '../../interfaces/LayerInterface.js'
-import { Commands, LogCommand } from '../../logcommands/index.js'
+import { Commands, LogCommand } from '../../logcommands/commands.js'
 import TransactionDatabase from './TransactionDatabase.js'
 export enum TxStatuses {
     ABORTED = 'aborted', // or failed

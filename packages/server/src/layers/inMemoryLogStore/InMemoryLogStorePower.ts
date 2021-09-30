@@ -1,12 +1,13 @@
 import HasIDsInterface from '../../interfaces/HasIDsInterface.js'
 import { PowerOpts } from '../../interfaces/Options.js'
 import PowerInterface from '../../interfaces/PowerInterface.js'
-import LogIDManager from './abstract/LogIDManager.js'
+import ManagesIDAllocation from '../../interfaces/ManagesIDAllocation.js'
 import InMemoryLogStore from './InMemoryLogStore.js'
 
-export default class InMemoryLogStorePower<V> extends LogIDManager implements HasIDsInterface<V>, PowerInterface<V> {
+export default class InMemoryLogStorePower<V> extends ManagesIDAllocation implements HasIDsInterface<V>, PowerInterface<V> {
     opts: PowerOpts
 
+    initialised: boolean
     inMemoryLogStore: InMemoryLogStore
 
     constructor(inMemoryLogStore: InMemoryLogStore, opts: PowerOpts){
@@ -14,6 +15,7 @@ export default class InMemoryLogStorePower<V> extends LogIDManager implements Ha
         super()
         this.opts = opts
         this.inMemoryLogStore = inMemoryLogStore
+        this.initialised = false
     }
 
     get server () {

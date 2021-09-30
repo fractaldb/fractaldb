@@ -3,7 +3,6 @@ import { FractalServer } from '../../database/Server.js'
 import MockDatabase from './MockDatabase.js'
 import InMemoryLogStore from '../inMemoryLogStore/InMemoryLogStore.js'
 
-
 export default class MockLayer {
     databases: Map<string, MockDatabase | null> = new Map()
     mostRecentLogStore!: InMemoryLogStore

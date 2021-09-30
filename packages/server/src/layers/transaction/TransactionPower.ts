@@ -1,4 +1,4 @@
-import { Commands, LogCommand } from '../../logcommands/index.js'
+import { Commands, LogCommand } from '../../logcommands/commands.js'
 import Transaction from './Transaction.js'
 import { hasItems } from './interfaces/hasItems.js'
 import HasItemsAbstract from './abstract/HasItemsAbstract.js'
@@ -23,8 +23,7 @@ export default class TransactionPower<V> extends HasItemsAbstract implements has
     }
 
     async get(id: number): Promise<V | null> {
-        let resource = [this.opts.database, this.opts.collection, this.opts.subcollection, id].join('.')
-        await this.tx.server.lockEngine.tryToAcquireLock(resource, this.tx, this)
+        this.lock(id)
 
         let value = this.items.get(id)
         if(value) return this.server.adn.deserialize(value) as V
@@ -50,7 +49,24 @@ export default class TransactionPower<V> extends HasItemsAbstract implements has
         return writes
     }
 
-    async set(index: number, value: V){
-        this.items.set(index, this.server.adn.serialize(value))
+    async allocateID(): Promise<number> {
+        let id = await super.allocateID()
+        this.lock(id)
+        return id
+    }
+
+    async lock(id: number){
+        let resource = [this.opts.database, this.opts.collection, this.opts.subcollection, id].join('.')
+        await this.tx.server.lockEngine.tryToAcquireLock(resource, this.tx, this)
+    }
+
+    /**
+     * Set the value of a power store with the given ID
+     *
+     * Pass in null as the value to delete the node
+     */
+    async set(id: number, value: V | null){
+        this.lock(id)
+        this.items.set(id, value ? this.server.adn.serialize(value) : null)
     }
 }

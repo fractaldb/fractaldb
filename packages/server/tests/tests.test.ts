@@ -13,28 +13,16 @@ export let client = new FractalClient()
 let col = client.db('main').collection('items')
 
 
-describe('docs', () => {
-    test('can create a node', async () => {
-        let node = await col.createNode()
-        await col.createNode()
-        await col.createNode()
-        await col.createNode()
-        await col.createNode()
-        // expect(node.name).toBe('test')
-        // expect(node.description).toBe('test')
-    })
-    test('can save empty doc and find an item', async () => {
-        // let doc = { test: 'a' }
-        // await col.insertOne(doc)
-        // let { entity } = await col.findOne({});
-        // let entityID = entity?.entityID
-        // if(entity) delete entity['entityID']
-        // expect(entity).toBe(doc)
-        // expect(entityID instanceof EntityID).toBe(true)
-    })
 
-    test.todo('deadlock throws TransientError to transaction during a deadlock (offender)')
-    test.todo('deadlock throws TransientError to transaction during a deadlock (non-offending)')
+    // `test('can save empty doc and find an item', async () => {
+    //     // let doc = { test: 'a' }
+    //     // await col.insertOne(doc)
+    //     // let { entity } = await col.findOne({});
+    //     // let entityID = entity?.entityID
+    //     // if(entity) delete entity['entityID']
+    //     // expect(entity).toBe(doc)
+    //     // expect(entityID instanceof EntityID).toBe(true)
+    // })
 
 
     // BENCHMARK CODE
@@ -46,12 +34,56 @@ describe('docs', () => {
     //     col.findOne({})
 
     // await server.stop()
-    // await client.close()
+    // await client.close()`
+
+describe('locking system', () => {
+    test.todo('deadlock throws TransientError to transaction during a deadlock (offender)')
+    test.todo('deadlock throws TransientError to transaction during a deadlock (non-offending)')
+})
+
+describe('subcollections', () => {
+    describe('nodes', () => {
+        test('nodes can be created', async () => {
+            let node = await col.createNode()
+
+            expect(node.database).toBe('main')
+            expect(node.collection).toBe('items')
+            expect(node.id).toBe(1)
+        })
+        test('nodes can be deleted', async () => {
+            let node = await col.createNode()
+            await col.deleteNode(node.id)
+        })
+        test.todo('nodes can be updated')
+        test.todo('nodes can be queried')
+        test.todo('nodes delete old RecordValues when updating')
+        test.todo('nodes persist across restarts')
+    })
+    test.todo('old recordvalues are deleted when updating size of a value')
+    test.todo('set operations use freeIDs')
+    test.todo('record changes persist across restarts')
+    test.todo('power changes persist across restarts')
+    test.todo('power collection values go to correct power of allocation locations')
+})
+
+
+
+describe('subcollection ID system', () => {
+    test.todo('highestID increments')
+    test.todo('freeIDs get used')
+    test.todo('logs recover old ID state on restart')
+})
+
+describe('power ID system', () => {
+    test.todo('highestID increments')
+    test.todo('freeIDs get used')
+    test.todo('logs recover old ID state on restart')
 })
 
 describe('database transaction system', () => {
     test.todo('can do a read operation in transaction')
     test.todo('can do a write operation in transaction')
+    test.todo('transactions dont leak state between eachother')
     test.todo('transaction log txCount increments in case of succesful write transaction')
     test.todo('transaction log txCount does not increment in case of failed write transaction')
     test.todo('transaction log rotates when full of write transactions')
@@ -59,7 +91,3 @@ describe('database transaction system', () => {
 })
 
 await run()
-
-
-
-export {}

@@ -1,3 +1,6 @@
+
+export type ValidSubcollections = 'bnode' | 'node' | 'value' | 'index'
+
 export type DatabaseOpts = {
     database: string
 }
@@ -7,7 +10,7 @@ export type CollectionOpts = {
 } & DatabaseOpts
 
 export type SubcollectionOpts = {
-    subcollection: 'bnode' | 'node' | 'value' | 'index',
+    subcollection: ValidSubcollections
 } & CollectionOpts
 
 export type PowerOpts = {

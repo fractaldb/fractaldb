@@ -7,8 +7,8 @@ export interface CreateNode extends BaseOperation {
 }
 
 export interface CreateNodeResponse {
-    database: string
-    collection: string
+    // database: string
+    // collection: string
     id: number, // id of the node
     properties: number, // ID of the properties index
     references: number // ID of the references index

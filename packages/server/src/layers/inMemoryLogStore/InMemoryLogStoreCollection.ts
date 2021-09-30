@@ -1,13 +1,13 @@
 import CollectionInterface from '../../interfaces/CollectionInterface.js'
 import { CollectionOpts } from '../../interfaces/Options.js'
-import { BNodeUnionData, IndexData, NodeData, ValueData } from '../../structures/Subcollection.js'
+import { BNodeUnionData, IndexDataUnion, NodeData, ValueData } from '../../structures/Subcollection.js'
 import InMemoryLogStore from './InMemoryLogStore.js'
 import InMemoryLogStoreSubcollection from './InMemoryLogStoreSubcollection.js'
 export default class InMemoryLogStoreCollection implements CollectionInterface {
     opts: CollectionOpts
 
-    bnode: InMemoryLogStoreSubcollection<BNodeUnionData>
-    index: InMemoryLogStoreSubcollection<IndexData>
+    bnode: InMemoryLogStoreSubcollection<BNodeUnionData<any>>
+    index: InMemoryLogStoreSubcollection<IndexDataUnion>
     node: InMemoryLogStoreSubcollection<NodeData>
     value: InMemoryLogStoreSubcollection<ValueData>
 

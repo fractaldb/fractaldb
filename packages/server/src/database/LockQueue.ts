@@ -35,7 +35,7 @@ export class LockQueue {
         }
     }
 
-    async getLockPromise(hasItems: hasItems<any>) {
+    async getLockPromise(hasItems: hasItems) {
         let shouldCallNext = this.isEmpty
         let lockItem = this.items.find(item => item.tx === hasItems.tx)
         if(!lockItem) {

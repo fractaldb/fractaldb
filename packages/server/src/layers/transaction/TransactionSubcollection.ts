@@ -1,4 +1,4 @@
-import { Commands, LogCommand } from '../../logcommands/index.js'
+import { Commands, LogCommand } from '../../logcommands/commands.js'
 import { hasItems } from './interfaces/hasItems.js'
 import Transaction from './Transaction.js'
 import { RecordValue } from '../../structures/DataStructures.js'
@@ -31,8 +31,7 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
      * Get the record value for the given ID, if it does not exist, then a lower layer will be queried
      */
     async get(id: number): Promise<RecordValue | null> {
-        let resource = [this.opts.database, this.opts.collection, this.opts.subcollection, id].join('.')
-        await this.tx.server.lockEngine.tryToAcquireLock(resource, this.tx, this)
+        await this.lock(id)
 
         let value = this.items.get(id)
         if(value) return this.server.adn.deserialize(value) as RecordValue
@@ -46,6 +45,8 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
      * Helper function that returns the actual value of the id (not the power pointers)
      */
     async getActual(id: number): Promise<V | null> {
+        await this.lock(id)
+
         let recordValue = await this.get(id)
 
         if(recordValue) { // the value exists
@@ -86,9 +87,8 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
         return powerClass
     }
 
-    async setActual(id: number, value: V): Promise<void> {
-        let resource = [this.opts.database, this.opts.collection, this.opts.subcollection, id].join('.')
-        await this.tx.server.lockEngine.tryToAcquireLock(resource, this.tx, this)
+    async setActual(id: number, value: V | null): Promise<void> {
+        await this.lock(id)
 
         // TODO, check if the id is already in the subcollection, if so, we delete the old power of ID, and create a new one
         let adn = this.tx.server.adn
@@ -104,5 +104,27 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
 
         // set item in local state
         this.items.set(id, this.server.adn.serialize(recordValue))
+    }
+
+    async lock(id: number){
+        let resource = [this.opts.database, this.opts.collection, this.opts.subcollection, id].join('.')
+        await this.tx.server.lockEngine.tryToAcquireLock(resource, this.tx, this)
+    }
+
+    /**
+     * Set the recordValue of a node with the given ID
+     *
+     * Pass in null as the value to delete the node
+     */
+    async set(id: number, value: RecordValue | null) {
+        await this.lock(id)
+
+        this.items.set(id, value ? this.server.adn.serialize(value) : null)
+    }
+
+    async allocateID(): Promise<number> {
+        let id = await super.allocateID()
+        this.lock(id)
+        return id
     }
 }

@@ -3,7 +3,7 @@
 // A B+ tree consists of a root, internal nodes and leaves.
 // The root may be either a leaf or a node with two or more children
 
-import { TransactionCollection } from '@fractaldb/fractal-server/layers/transaction/TransactionCollection'
+import TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
 import { BNode, BNodeInternal, EditRangeResult } from './BTreeNode.js'
 
 function iterator<T>(next: () => Promise<IteratorResult<T>> = (async () => ({ done:true, value:undefined }))): IterableIterator<T> {
@@ -39,9 +39,9 @@ export default class BTree<K, V> {
     async getRoot(): Promise<BNode<K, V> | BNodeInternal<K, V>> {
         if(!this.root) {
             this.root = (await EmptyLeaf(this.txState) as BNode<K, V>).id
-            await this.txState.indexes.setAsModified(this.id)
+            await this.txState.index.setAsModified(this.id)
         }
-        return await this.txState.bnodes.get(this.root)
+        return await this.txState.bnode.getOrInstantiate(this.root) as BNode<K, V> | BNodeInternal<K, V>
     }
 
 
@@ -52,13 +52,6 @@ export default class BTree<K, V> {
     get isEmpty(): boolean {
         return this.size === 0
     }
-
-    async clear(): Promise<void> {
-        await this.txState.bnodes.remove(this.root)
-        this.root = (await EmptyLeaf(this.txState) as BNode<K, V>).id
-        this.size = 0
-    }
-
 
     async forEach(callback: (v:V, k:K, tree:BTree<K,V>) => void, thisArg?: any): Promise<number>;
 
@@ -126,12 +119,12 @@ export default class BTree<K, V> {
         if (result === true || result === false)
             return result
         // Root node has split, so create a new root node.
-        let id = await this.txState.bnodes.allocateID()
+        let id = await this.txState.bnode.allocateID()
         let root = new BNodeInternal<K, V>(this.txState, id, [this.root, result.id], [await currentRoot.maxKey(), await result.maxKey()])
-        await this.txState.bnodes.set(id, root)
+        await this.txState.bnode.setInstance(id, root)
 
         this.root = id
-        await this.txState.indexes.setAsModified(id)
+        await this.txState.index.setAsModified(id)
 
         return true
     }
@@ -877,7 +870,7 @@ export default class BTree<K, V> {
                     await EmptyLeaf(this.txState) :
                     await (root as any as BNodeInternal<K, V>).getChild(0)
                 this.root = newRoot.id
-                this.txState.indexes.setAsModified(this.id)
+                this.txState.index.setAsModified(this.id)
             }
         }
     }
@@ -1053,6 +1046,7 @@ export class PropertyBTree<K, V> extends BTree <string, UniqueBTree<K, V>> {
         }
     }
 
+
     async prepareIndexes(doc: any): Promise<void> {
         let propertyValue = this.getValueOfDoc(doc)
         let alreadyExists = await this.has(propertyValue)
@@ -1118,9 +1112,9 @@ type DiffCursor<K, V> = { height: number, internalSpine: BNode<K, V>[][], levelI
 
 const Break = { break: true }
 const EmptyLeaf = async function (txState: TransactionCollection) {
-    let id = await txState.bnodes.allocateID()
+    let id = await txState.bnode.allocateID()
     let n = new BNode<any, any>(txState, id, [],[])
-    await txState.bnodes.set(id, n)
+    txState.bnode.setInstance(id, n)
     return n
 }
 const EmptyArray: any[] = []

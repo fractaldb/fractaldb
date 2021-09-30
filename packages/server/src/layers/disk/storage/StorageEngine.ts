@@ -30,13 +30,6 @@ export class StorageEngine {
     logEngine: LogEngine
     configFileHandler!: FileHandle
 
-    async setupConfigFileHandler(number: number) {
-        if (!this.configFileHandler) {
-            this.configFileHandler = await open(ResolvePath(this.logsPath, `${number}.log.fdb`), 'a+')
-        }
-        return this.configFileHandler
-    }
-
     constructor(server: FractalServer) {
         this.fractalPath = `${homedirPath}/fractaldb/`
         this.dataPath = ResolvePath(this.fractalPath, `data/`)

@@ -43,6 +43,18 @@ export default class Collection {
         })
     }
 
+    /**
+     * This will delete the node from the database
+     * It will also delete:
+     * - any of it's property / children
+     */
+    async deleteNode(): Promise<Dle> {
+        return await this.sendMessage({
+            op: 'DeleteNode',
+            database: this.database.name,
+            collection: this.name
+        })
+    }
 
     find(query: any, options: FindCommand = {}) {
         let command = {

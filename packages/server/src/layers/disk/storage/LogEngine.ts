@@ -3,7 +3,7 @@ import { resolve as ResolvePath } from 'path'
 import InMemoryLogStore from '../../inMemoryLogStore/InMemoryLogStore.js'
 import { StorageEngine } from './StorageEngine.js'
 import crc32 from 'crc-32'
-import { LogCommand } from '../../../logcommands/index.js'
+import { LogCommand } from '../../../logcommands/commands.js'
 import MockLayer from '../../mock/MockLayer.js'
 
 enum SIDES {
@@ -112,8 +112,9 @@ export default class LogEngine {
             let buffer = readFileSync(nextLogFile)
             let txs = await this.deserialiseLog(nextLogNumber, buffer)
 
+
             for (let tx of txs) {
-                currentLogStore.applyTxCommands(tx)
+                await currentLogStore.applyTxCommands(tx)
                 currentLogStore.txCount++
             }
             if(!oldestLog){

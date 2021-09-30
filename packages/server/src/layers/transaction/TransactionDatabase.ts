@@ -1,6 +1,6 @@
 import DatabaseInterface from '../../interfaces/DatabaseInterface.js'
 import { DatabaseOpts } from '../../interfaces/Options.js'
-import { Commands, LogCommand } from '../../logcommands/index.js'
+import { Commands, LogCommand } from '../../logcommands/commands.js'
 import MockDatabase from '../mock/MockDatabase.js'
 import Transaction from './Transaction.js'
 import TransactionCollection from './TransactionCollection.js'

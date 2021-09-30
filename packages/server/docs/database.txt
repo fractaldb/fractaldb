@@ -91,6 +91,7 @@ enum ValueType {
     Value: 0
     Index: 1
     Node: 2
+    Edge: 3
 }
 
 - edges have an index of all values that reference them

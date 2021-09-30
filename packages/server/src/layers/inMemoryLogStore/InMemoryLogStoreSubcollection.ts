@@ -1,12 +1,12 @@
 import { RecordValue } from '../../structures/DataStructures.js'
 import { SubcollectionInterface } from '../../interfaces/SubcollectionInterface.js'
-import LogIDManager from './abstract/LogIDManager.js'
+import ManagesIDAllocation from '../../interfaces/ManagesIDAllocation.js'
 import InMemoryLogStore from './InMemoryLogStore.js'
 import InMemoryLogStorePower from './InMemoryLogStorePower.js'
 import HasIDsInterface from '../../interfaces/HasIDsInterface.js'
 import { SubcollectionOpts } from '../../interfaces/Options.js'
 
-export default class InMemoryLogStoreSubcollection<V> extends LogIDManager implements SubcollectionInterface<V>, HasIDsInterface<RecordValue> {
+export default class InMemoryLogStoreSubcollection<V> extends ManagesIDAllocation implements SubcollectionInterface<V>, HasIDsInterface<RecordValue> {
     inMemoryLogStore: InMemoryLogStore
     opts: SubcollectionOpts
 

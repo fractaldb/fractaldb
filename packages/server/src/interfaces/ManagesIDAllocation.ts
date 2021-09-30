@@ -1,4 +1,4 @@
-export default abstract class ManagesItems {
+export default abstract class ManagesIDAllocation {
     items: Map<number, string | null> = new Map()
 
     highestID: number
@@ -7,7 +7,7 @@ export default abstract class ManagesItems {
     freeIDs: Set<number>
 
     constructor(){
-        this.highestID = 1
+        this.highestID = 0
         this.usedIDs = new Set()
         this.freeIDs = new Set()
     }

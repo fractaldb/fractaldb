@@ -1,4 +1,4 @@
-import { Commands, DeleteBNode, SetBNode } from '../../../logcommands'
+import { Commands, DeleteBNode, SetBNode } from '../../../logcommands/commands'
 import { BNodeData } from '../../../structures/Subcollection'
 import TransactionSubcollection from '../TransactionSubcollection'
 

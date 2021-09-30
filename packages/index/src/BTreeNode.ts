@@ -1,4 +1,6 @@
-import { TransactionCollection } from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
+
+import TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
+import { BNodeTypes, BNodeUnionData } from '@fractaldb/fractal-server/structures/Subcollection.js'
 import BTree from './BTree.js'
 // BTree Node
 
@@ -19,6 +21,10 @@ export class BNode<K, V> {
         this.txState = txState
         this.keys = keys
         this.values = values || undefVals as any[]
+    }
+
+    deinstantiate(): BNodeUnionData<V> {
+        return [BNodeTypes.Leaf, [...this.keys], [...this.values]]
     }
 
     async maxKey() {
@@ -103,7 +109,7 @@ export class BNode<K, V> {
         } else {
             // key exists
             if (overwrite !== false) {
-                await this.txState.bnodes.setAsModified(this.id)
+                await this.txState.bnode.setAsModified(this.id)
                 if (value !== undefined)
                     await this.reifyValues()
                 this.values[i] = value
@@ -119,7 +125,7 @@ export class BNode<K, V> {
     }
 
     async insertInLeaf(i: index, key: K, value: V, tree: BTree<K, V>): Promise<boolean> {
-        await this.txState.bnodes.setAsModified(this.id)
+        await this.txState.bnode.setAsModified(this.id)
         this.keys.splice(i, 0, key)
         if (this.values === undefVals) {
             while (undefVals.length < tree.maxNodeSize)
@@ -135,7 +141,7 @@ export class BNode<K, V> {
     }
 
     async takeFromRight(rhs: BNode<K, V>) {
-        await this.txState.bnodes.setAsModified(this.id)
+        await this.txState.bnode.setAsModified(this.id)
         // parent node must update its copy of key for this node
         // assert: neither node is shared
         // assert: rhs.keys.length > (maxNodeSize/2 && this.keys.length < maxNodeSize)
@@ -151,7 +157,7 @@ export class BNode<K, V> {
     }
 
     async takeFromLeft(lhs: BNode<K, V>) {
-        await this.txState.bnodes.setAsModified(this.id)
+        await this.txState.bnode.setAsModified(this.id)
         // Reminder: parent node must update its copy of key for this node
         // assert: neither node is shared
         // assert rhs.keys.length > (maxNodeSize/2 && this.keys.length<maxNodeSize)
@@ -168,13 +174,13 @@ export class BNode<K, V> {
 
     async splitOffRightSide(): Promise<BNode<K, V>> {
         // Reminder: parent node must update its copy of key for this node
-        await this.txState.bnodes.setAsModified(this.id)
+        await this.txState.bnode.setAsModified(this.id)
         let half = this.keys.length >> 1, keys = this.keys.splice(half)
         let values = this.values === undefVals ? undefVals : this.values.splice(half)
 
-        let id = await this.txState.bnodes.allocateID()
+        let id = await this.txState.bnode.allocateID()
         let node = new BNode<K, V>(this.txState, id, keys, values)
-        await node.txState.bnodes.set(id, node)
+        await node.txState.bnode.instances.set(id, node)
 
         return node
     }
@@ -209,7 +215,7 @@ export class BNode<K, V> {
                         if (key !== keys[i])
                             throw new Error("BTree illegally changed or cloned in editRange")
                         if (result.delete) {
-                            await this.txState.bnodes.setAsModified(this.id)
+                            await this.txState.bnode.setAsModified(this.id)
                             this.keys.splice(i, 1)
                             if (this.values !== undefVals)
                                 this.values.splice(i, 1)
@@ -217,7 +223,7 @@ export class BNode<K, V> {
                             i--
                             iHigh--
                         } else if (result.hasOwnProperty('value')) {
-                            await this.txState.bnodes.setAsModified(this.id)
+                            await this.txState.bnode.setAsModified(this.id)
                             values![i] = result.value!
                         }
                     }
@@ -232,7 +238,7 @@ export class BNode<K, V> {
 
     /** Adds entire contents of right-hand sibling (rhs is left unchanged) */
     async mergeSibling(rhs: BNode<K, V>, _: number) {
-        await this.txState.bnodes.setAsModified(this.id)
+        await this.txState.bnode.setAsModified(this.id)
         this.keys.push.apply(this.keys, rhs.keys)
         if (this.values === undefVals) {
             if (rhs.values === undefVals)
@@ -257,8 +263,12 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
         this.children = children
     }
 
+    deinstantiate(): BNodeUnionData<V> {
+        return [BNodeTypes.Internal, [...this.keys], [...this.children]]
+    }
+
     async getChild(i: number): Promise<BNode<K, V>> {
-        return (await this.txState.bnodes.get(this.children[i]))
+        return (await this.txState.bnode.getOrInstantiate(this.children[i])) as BNode<K, V>
     }
 
     async getAllChildren() {
@@ -334,11 +344,11 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
             var other: BNode<K, V>
             if (i > 0 && (other = await this.getChild(i - 1)).keys.length < max && cmp(child.keys[0], key) < 0) {
                 await other.takeFromRight(child)
-                this.txState.bnodes.setAsModified(this.id)
+                this.txState.bnode.setAsModified(this.id)
                 this.keys[i - 1] = await other.maxKey()
             } else if ((other = await this.getChild(i + 1)) !== undefined && other.keys.length < max && cmp(await child.maxKey(), key) < 0) {
                 await other.takeFromLeft(child)
-                this.txState.bnodes.setAsModified(this.id)
+                this.txState.bnode.setAsModified(this.id)
                 this.keys[i] = await (await this.getChild(i)).maxKey()
             }
         }
@@ -347,7 +357,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
         if (result === false)
             return false
 
-        this.txState.bnodes.setAsModified(this.id)
+        this.txState.bnode.setAsModified(this.id)
         this.keys[i] = await child.maxKey()
         if (result === true)
             return true
@@ -368,21 +378,21 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
     }
 
     async insert(i: index, child: BNode<K, V>) {
-        await this.txState.bnodes.setAsModified(this.id)
+        await this.txState.bnode.setAsModified(this.id)
         this.children.splice(i, 0, child.id)
         this.keys.splice(i, 0, await child.maxKey())
     }
 
     async splitOffRightSide() {
         var half = this.children.length >> 1
-        let id = await this.txState.bnodes.allocateID()
+        let id = await this.txState.bnode.allocateID()
         let node = new BNodeInternal<K, V>(this.txState, id, this.children.splice(half), this.keys.splice(half))
-        await node.txState.bnodes.set(id, node)
+        await node.txState.bnode.instances.set(id, node)
         return node
     }
 
     async takeFromRight(rhs: BNode<K, V>) {
-        await this.txState.bnodes.setAsModified(this.id)
+        await this.txState.bnode.setAsModified(this.id)
         // Reminder: parent node must update its copy of key for this node
         // assert: neither node is shared
         // assert rhs.keys.length > (maxNodeSize/2 && this.keys.length<maxNodeSize)
@@ -391,7 +401,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
     }
 
     async takeFromLeft(lhs: BNode<K, V>) {
-        await this.txState.bnodes.setAsModified(this.id)
+        await this.txState.bnode.setAsModified(this.id)
         // Reminder: parent node must update its copy of key for this node
         // assert: neither node is shared
         // assert rhs.keys.length > (maxNodeSize/2 && this.keys.length<maxNodeSize)
@@ -426,7 +436,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
                     var result = await (await this.getChild(i)).forRange(low, high, includeHigh, editMode, tree, count, onFound)
                     // Note: if children[i] is empty then keys[i]=undefined.
                     //       This is an invalid state, but it is fixed below.
-                    await this.txState.bnodes.setAsModified(this.id)
+                    await this.txState.bnode.setAsModified(this.id)
                     keys[i] = await (await this.getChild(i)).maxKey()
                     if (typeof result !== 'number')
                         return result
@@ -443,7 +453,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
                         if (child.keys.length !== 0) {
                             await this.tryMerge(i, tree.maxNodeSize)
                         } else { // child is empty! delete it!
-                            await this.txState.bnodes.remove(this.id) // I think this means deleted
+                            await this.txState.bnode.setActual(this.id, null) // I think this means deleted
                             keys.splice(i, 1)
                             children.splice(i, 1)
                         }
@@ -464,7 +474,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
             let child2 = await this.getChild(i + 1)
             if (child1.keys.length + child2.keys.length <= maxSize) {
                 await child1.mergeSibling(child2, maxSize)
-                await this.txState.bnodes.setAsModified(this.id)
+                await this.txState.bnode.setAsModified(this.id)
                 children.splice(i + 1, 1)
                 this.keys.splice(i + 1, 1)
                 this.keys[i] = await child1.maxKey()
@@ -478,7 +488,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
         // assert !this.isShared;
         var oldLength = this.keys.length
 
-        await this.txState.bnodes.setAsModified(this.id)
+        await this.txState.bnode.setAsModified(this.id)
 
         this.keys.push.apply(this.keys, rhs.keys)
         this.children.push.apply(this.children, (rhs as any as BNodeInternal<K, V>).children)

@@ -51,7 +51,7 @@ export default class LockEngine {
      *              - do the operation
      *          - release lock
      */
-    async tryToAcquireLock(resource: string, tx: Transaction, hasItems: hasItems<any>): Promise<void> {
+    async tryToAcquireLock(resource: string, tx: Transaction, hasItems: hasItems): Promise<void> {
         tx.waitingOn = resource
 
         let queue = this.findOrCreateQueue(resource)

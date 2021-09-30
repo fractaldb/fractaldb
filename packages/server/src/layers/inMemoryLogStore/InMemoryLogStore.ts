@@ -1,6 +1,6 @@
 import { FileHandle, open } from 'fs/promises'
 import { FractalServer } from '../../database/Server.js'
-import { Commands, LogCommand } from '../../logcommands/index.js'
+import { Commands, LogCommand } from '../../logcommands/commands.js'
 import AssertUnreachable from '../../utils/AssertUnreachable.js'
 import InMemoryLogStoreCollection from './InMemoryLogStoreCollection.js'
 import InMemoryLogStoreDatabase from './InMemoryLogStoreDatabase.js'
@@ -46,7 +46,7 @@ export default class InMemoryLogStore implements LayerInterface {
         this.txCount = value ? this.maxTxCount : this.txCount
     }
     get isFull () {
-        return this.txCount === this.maxTxCount
+        return this.txCount >= this.maxTxCount
     }
 
     async applyTxCommands(commands: LogCommand[]){

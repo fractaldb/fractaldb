@@ -1,6 +1,6 @@
 import { FractalServer } from '../../database/Server.js'
 import { CollectionOpts } from '../../interfaces/Options.js'
-import { BNodeUnionData, IndexData, NodeData, ValueData } from '../../structures/Subcollection.js'
+import { BNodeUnionData, IndexDataUnion, NodeData, ValueData } from '../../structures/Subcollection.js'
 import MockSubcollection from './MockSubcollection.js'
 
 
@@ -9,7 +9,7 @@ export default class MockCollection {
     opts: CollectionOpts
 
     bnode: MockSubcollection<BNodeUnionData>
-    index: MockSubcollection<IndexData>
+    index: MockSubcollection<IndexDataUnion>
     node: MockSubcollection<NodeData>
     value: MockSubcollection<ValueData>
 

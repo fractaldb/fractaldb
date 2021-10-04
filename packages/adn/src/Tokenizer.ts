@@ -1,4 +1,4 @@
-import { ADNExtension } from 'src'
+import { ADNExtension } from './index.js'
 import { EntityID } from './EntityID.js'
 import { InputStream } from './InputStream.js'
 import { Token, DataTypes, ExtensionToken } from './Types.js'

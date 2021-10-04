@@ -1,4 +1,4 @@
-import { Commands, LogCommand } from '../../logcommands/commands.js'
+import { Commands, LogCommand, SetPowerOfData } from '../../logcommands/commands.js'
 import Transaction from './Transaction.js'
 import { hasItems } from './interfaces/hasItems.js'
 import HasItemsAbstract from './abstract/HasItemsAbstract.js'
@@ -23,12 +23,12 @@ export default class TransactionPower<V> extends HasItemsAbstract implements has
     }
 
     async get(id: number): Promise<V | null> {
-        this.lock(id)
+        await this.lock(id)
 
         let value = this.items.get(id)
         if(value) return this.server.adn.deserialize(value) as V
         // not in local state, try to get from next layers
-        if(!value) return await this.mock.predicate(layer => layer?.get(id)) ?? null
+        if(!value) return await this.mock.predicate(async layer => await layer?.get(id)) ?? null
 
         return null
     }
@@ -43,20 +43,20 @@ export default class TransactionPower<V> extends HasItemsAbstract implements has
                 this.opts.subcollection,
                 this.opts.power,
                 id,
-                value
-            ])
+                value ? this.server.adn.deserialize(value) : null
+            ] as SetPowerOfData)
         }
         return writes
     }
 
     async allocateID(): Promise<number> {
         let id = await super.allocateID()
-        this.lock(id)
+        await this.lock(id)
         return id
     }
 
     async lock(id: number){
-        let resource = [this.opts.database, this.opts.collection, this.opts.subcollection, id].join('.')
+        let resource = [this.opts.database, this.opts.collection, this.opts.subcollection, this.opts.power, id].join('.')
         await this.tx.server.lockEngine.tryToAcquireLock(resource, this.tx, this)
     }
 
@@ -66,7 +66,8 @@ export default class TransactionPower<V> extends HasItemsAbstract implements has
      * Pass in null as the value to delete the node
      */
     async set(id: number, value: V | null){
-        this.lock(id)
+        await this.lock(id)
+
         this.items.set(id, value ? this.server.adn.serialize(value) : null)
     }
 }

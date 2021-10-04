@@ -28,6 +28,7 @@ export const uuidV4 = () => {
 // import { UpdateManyCommand } from '../commands/UpdateMany.js'
 // import { CommitTransactionCommand } from '../commands/CommitTransaction.js'
 import { CreateNodeCommand } from '../commands/CreateNode.js'
+import { DeleteNodeCommand } from '../commands/DeleteNode.js'
 
 
 export default class ClientConnection extends EventEmitter {
@@ -99,6 +100,10 @@ export default class ClientConnection extends EventEmitter {
             //     break
             case 'CreateNode':
                 response = await CreateNodeCommand(operation, tx)
+                break
+            case 'DeleteNode':
+                response = await DeleteNodeCommand(operation, tx)
+                break
         }
 
         if(shouldCommit) await tx.commit()

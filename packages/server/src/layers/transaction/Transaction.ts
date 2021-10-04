@@ -75,7 +75,7 @@ export default class Transaction implements LayerInterface {
             if(db === null){
                 continue
             }
-            // db.releaseLocks()
+            db.releaseLocks()
         }
         this.status = TxStatuses.COMMITTED
     }

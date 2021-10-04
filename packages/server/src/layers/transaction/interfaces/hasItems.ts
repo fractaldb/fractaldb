@@ -1,4 +1,4 @@
-import Transaction from '../Transaction'
+import Transaction from '../Transaction.js'
 
 
 export interface hasItems {

@@ -1,4 +1,4 @@
-import DatabaseInterface from './DatabaseInterface'
+import DatabaseInterface from './DatabaseInterface.js'
 
 export default interface LayerInterface {
 

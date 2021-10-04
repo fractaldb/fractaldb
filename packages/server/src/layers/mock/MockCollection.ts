@@ -8,7 +8,7 @@ export default class MockCollection {
     server: FractalServer
     opts: CollectionOpts
 
-    bnode: MockSubcollection<BNodeUnionData>
+    bnode: MockSubcollection<BNodeUnionData<any>>
     index: MockSubcollection<IndexDataUnion>
     node: MockSubcollection<NodeData>
     value: MockSubcollection<ValueData>

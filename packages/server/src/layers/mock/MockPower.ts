@@ -20,19 +20,22 @@ export default class MockPower<V> implements AllocatesIDsInterface {
         this.opts = opts
     }
 
-    predicate<X>(cb: (layer?: PowerInterface<V>) => X, startFrom?: InMemoryLogStore ){
+    async predicate<X>(cb: (layer?: PowerInterface<V>) => X | Promise<X>, startFrom?: InMemoryLogStore ): Promise<X | undefined> {
         let log : InMemoryLogStore | undefined = startFrom ?? this.mockLayer.mostRecentLogStore
 
         while(log) { // there is an older log store, so we need to check it for the same item
             let layer = this.getThisLayer(log)
-
             if(layer) {
-                let result = cb(layer)
+                let result = await cb(layer)
+                // if result is null, then it has been deleted, so we return that
                 if(result !== undefined) return result
+                // value is undefined, so we need to check the next log store
             }
 
             log = log.older
         }
+
+        return
 
         throw new Error('Disk layer not yet implemented')
     }
@@ -61,15 +64,17 @@ export default class MockPower<V> implements AllocatesIDsInterface {
             subcollection.powers.set(this.opts.power, power)
         }
         if(!power.initialised) {
-            let nextMostRecent = log.older ? this.predicate<ManagesIDAllocation | undefined>(layer => layer instanceof ManagesIDAllocation ? layer : undefined, log.older) : undefined
-            if(nextMostRecent) { // initialise based on last known values
-                power.freeIDs = new Set(nextMostRecent.freeIDs)
-                power.usedIDs = new Set(nextMostRecent.usedIDs)
-                power.highestID = nextMostRecent.highestID
-            } // else just use the defaults
-            let command: InitialisePower = [Commands.InitialisePower, this.opts.database, this.opts.collection, this.opts.subcollection, this.opts.power, subcollection.highestID, [...subcollection.freeIDs, ...subcollection.usedIDs]]
-            log.applyTxCommands([command])
-            power.initialised = true
+            let nextMostRecent = log.older ? await this.predicate<ManagesIDAllocation | undefined>(layer => layer instanceof ManagesIDAllocation ? layer : undefined, log.older) : undefined
+            let freeIDs = nextMostRecent ? new Set(nextMostRecent.freeIDs) : new Set<number>()
+            let usedIDs = nextMostRecent ? new Set(nextMostRecent.usedIDs) : new Set<number>()
+            let highestID = nextMostRecent ? nextMostRecent.highestID : 0
+
+            let command: InitialisePower = [Commands.InitialisePower, this.opts.database, this.opts.collection, this.opts.subcollection, this.opts.power, highestID, [...freeIDs, ...usedIDs]]
+            await log.applyTxCommands([command])
+
+            // reset freeIDs and usedIDs, as they may be currently being used
+            power.freeIDs = freeIDs
+            power.usedIDs = usedIDs
         }
         return power
     }
@@ -99,7 +104,8 @@ export default class MockPower<V> implements AllocatesIDsInterface {
             // log the fact that we're incrementing the highest ID, this is considered a write command
             let command: IncrementPowerHighestID = [Commands.IncrementPowerHighestID, this.opts.database, this.opts.collection, this.opts.subcollection, this.opts.power]
             await this.mockLayer.mostRecentLogStore.applyTxCommands([command])
-            let id = ++latest.highestID
+
+            let id = latest.highestID
             latest.usedIDs.add(id)
             return id
         } else {
@@ -110,11 +116,11 @@ export default class MockPower<V> implements AllocatesIDsInterface {
         }
     }
 
-    getThisLayer(older: InMemoryLogStore) {
-        return ((older
+    getThisLayer(older: InMemoryLogStore): PowerInterface<V> | undefined {
+        return older
             ?.databases.get(this.opts.database)
-            ?.collections.get(this.opts.collection) as any)
-            ?.[this.opts.subcollection] as SubcollectionInterface<V>)
-            ?.powers.get(this.opts.power) as PowerInterface<V> | undefined
+            ?.collections.get(this.opts.collection)
+            ?.[this.opts.subcollection]
+            ?.powers.get(this.opts.power)
     }
 }

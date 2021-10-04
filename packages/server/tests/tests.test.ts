@@ -48,6 +48,7 @@ describe('subcollections', () => {
 
             expect(node.database).toBe('main')
             expect(node.collection).toBe('items')
+
             expect(node.id).toBe(1)
         })
         test('nodes can be deleted', async () => {

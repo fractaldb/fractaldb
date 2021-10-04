@@ -2,6 +2,7 @@
 // import { CommitTransaction, CommitTransactionResponse } from './CommitTransaction.js'
 // import { Count, CountResponse } from './Count.js'
 import { CreateNode, CreateNodeResponse } from './CreateNode.js'
+import { DeleteNode, DeleteNodeResponse } from './DeleteNode.js'
 // import { DeleteMany, DeleteManyResponse } from './DeleteMany.js'
 // import { DeleteOne, DeleteOneResponse } from './DeleteOne.js'
 // import { FindMany, FindManyResponse, FindManyMore, FindManyMoreResponse } from './FindMany.js'
@@ -14,6 +15,7 @@ import { CreateNode, CreateNodeResponse } from './CreateNode.js'
 
 export type Operation =
     | CreateNode
+    | DeleteNode
     // | AbortTransaction
     // | CommitTransaction
     // | StartTransaction
@@ -33,6 +35,7 @@ export type RequestOperation = Operation & { requestID: string }
 
 export type OperationResponse =
     | CreateNodeResponse
+    | DeleteNodeResponse
     // | AbortTransactionResponse
     // | CommitTransactionResponse
     // | StartTransactionResponse

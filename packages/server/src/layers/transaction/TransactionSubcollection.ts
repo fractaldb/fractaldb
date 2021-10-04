@@ -36,7 +36,7 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
         let value = this.items.get(id)
         if(value) return this.server.adn.deserialize(value) as RecordValue
         // not in local state, try to get from next layers
-        if(!value) return await this.mock.predicate(layer => layer?.get(id)) ?? null
+        if(!value) return await this.mock.predicate(async layer => await layer?.get(id)) ?? null
 
         return null
     }
@@ -57,7 +57,7 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
 
             if(value) return value
 
-            throw new Error('Tried to get a powerValues that was deleted or does not exist')
+            throw new Error('Tried to get power data that was deleted or does not exist')
         }
 
         return null // value doesn't exist or has been deleted
@@ -72,10 +72,22 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
                 this.opts.collection,
                 this.opts.subcollection,
                 id,
-                value
+                value ? this.server.adn.deserialize(value) : null
             ])
         }
+
+        for(let power of this.powers.values()) {
+            writes.push(...power.getWrites())
+        }
+
         return writes
+    }
+
+    releaseLocks() {
+        for (let power of this.powers.values()) {
+            power.releaseLocks()
+        }
+        super.releaseLocks()
     }
 
     getOrCreatePower(power: number) {
@@ -95,10 +107,11 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
         let serialised = adn.serialize(value)
         let power = getUpperPowerOf2(serialised.length)
 
+
         let powerClass = this.getOrCreatePower(power)
 
         let index = await powerClass.allocateID()
-        powerClass.set(index, value)
+        await powerClass.set(index, value)
 
         let recordValue: RecordValue = [power, index]
 
@@ -124,7 +137,7 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
 
     async allocateID(): Promise<number> {
         let id = await super.allocateID()
-        this.lock(id)
+        await this.lock(id)
         return id
     }
 }

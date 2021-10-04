@@ -7,11 +7,14 @@
     "target": "ESNext",
     "module": "ESNext",
     "paths": {
+      "@fractaldb/shared": ["./../shared/src/"],
+      "@fractaldb/shared/*": ["./../shared/src/*"],
       "@fractaldb/fractal-server": ["./../server/src/"],
       "@fractaldb/fractal-server/*": ["./../server/src/*"]
     }
   },
   "references": [
-    { "path": "../server" }
+    { "path": "../server" },
+    { "path": "../shared" }
   ]
 }

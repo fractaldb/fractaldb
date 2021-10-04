@@ -2,8 +2,6 @@ import { runner } from '@framework-tools/catchit'
 import BTree from '@fractaldb/indexing-system/BTree.js'
 import { ValueIndex, PropertyIndex } from '@fractaldb/indexing-system/Index.js'
 
-import v8 from 'v8'
-
 let tree = new BTree<string, number>(undefined, [], 2)
 
 let { describe, expect, run, test } = runner()

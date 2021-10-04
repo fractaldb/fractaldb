@@ -35,25 +35,33 @@ export default class Collection {
         return responsePromise
     }
 
-    async createNode(): Promise<CreateNodeResponse> {
-        return await this.sendMessage({
-            op: 'CreateNode',
+    async createNode(){
+        let data = {
             database: this.database.name,
             collection: this.name
+        }
+        let response = await this.sendMessage({
+            op: 'CreateNode',
+            ...data
         })
+        return {...response, ...data}
     }
 
     /**
      * This will delete the node from the database
      * It will also delete:
-     * - any of it's property / children
+     *  - any of it's property / children
+     *  - edges
      */
-    async deleteNode(): Promise<Dle> {
-        return await this.sendMessage({
+    async deleteNode(node: number): Promise<void> {
+        await this.sendMessage({
             op: 'DeleteNode',
             database: this.database.name,
-            collection: this.name
+            collection: this.name,
+            node
         })
+
+        return
     }
 
     find(query: any, options: FindCommand = {}) {

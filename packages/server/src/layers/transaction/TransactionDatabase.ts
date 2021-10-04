@@ -45,9 +45,4 @@ export default class TransactionDatabase implements DatabaseInterface {
             collection.releaseLocks()
         }
     }
-
-    async createNode(collectionName: string){
-        const collection = this.getOrCreateCollection(collectionName)
-        return collection.createNode()
-    }
 }

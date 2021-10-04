@@ -79,3 +79,19 @@ valueIndex.getIndexesFor(doc):
 
 
 shouldAddTo: Index[] = [Itself, ...children, ...subindexes] // etc
+
+propertyMap process
+- get node of index
+- let oldindexes be txColl.getIndexesFor(node)
+- apply changes to node's propertymap index
+- call prepareindexes for node
+- let newindexes be txColl.getIndexesFor(node)
+- let shouldRemove be the indexes that were in oldindexes but not in newindexes
+- let shouldAdd be the indexes that were in newindexes but not in oldindexes
+- let shouldUpdate be the indexes that were in both oldindexes and newindexes
+- for each shouldRemove
+    - remove node from index
+- for each shouldAdd
+    - add node to index
+- for each shouldUpdate
+    - update node in index

@@ -9,5 +9,5 @@ let client = new FractalClient()
 
 let items = client.db('main').collection('items')
 
-console.log(await items.insertOne({}))
+// console.log(await items.insertOne({}))
 

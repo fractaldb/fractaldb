@@ -1,6 +1,6 @@
 
 // need deserialise function for each data type
-import { ADNExtension } from 'src'
+import { ADNExtension } from './index.js'
 import { Tokenizer } from './Tokenizer.js'
 import { DataTypeKeys, Token, NumberToken, StringToken, ExtensionToken } from './Types.js'
 

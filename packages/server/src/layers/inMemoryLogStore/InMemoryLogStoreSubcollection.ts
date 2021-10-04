@@ -25,9 +25,10 @@ export default class InMemoryLogStoreSubcollection<V> extends ManagesIDAllocatio
         return this.inMemoryLogStore.server
     }
 
-    async get(id: number): Promise<RecordValue | null> {
+    async get(id: number): Promise<RecordValue | null | undefined> {
         let string = this.items.get(id)
         if (string) return this.server.adn.deserialize(string) as RecordValue
-        return null
+        if (string === null) return null
+        return undefined // doesn't exist in this layer
     }
 }

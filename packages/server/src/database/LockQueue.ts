@@ -25,7 +25,7 @@ export class LockQueue {
 
     next() {
         if(this.isEmpty) {
-            delete this.lockEngine.locks[this.resource]
+            return delete this.lockEngine.locks[this.resource]
         }
         if(this.items[0].tx.status === TxStatuses.ABORTED) {
             this.items.shift()

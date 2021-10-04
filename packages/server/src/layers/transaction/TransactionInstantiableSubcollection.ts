@@ -1,8 +1,8 @@
 import { SubcollectionOpts } from '../../interfaces/Options'
 import { LogCommand } from '../../logcommands/commands'
-import MockSubcollection from '../mock/MockSubcollection'
-import Transaction from './Transaction'
-import TransactionSubcollection from './TransactionSubcollection'
+import MockSubcollection from '../mock/MockSubcollection.js'
+import Transaction from './Transaction.js'
+import TransactionSubcollection from './TransactionSubcollection.js'
 
 type Instantiator<I, V> = (id: number, data: V) => I
 

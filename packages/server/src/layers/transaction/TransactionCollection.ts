@@ -1,14 +1,17 @@
-import { BNodeInternalData, BNodeLeafData, BNodeTypes, BNodeUnionData, IndexDataUnion, IndexTypes, NodeData, PropertyMapIndexData, PropertyMapValue, ValueData, ValueTypes } from '../../structures/Subcollection.js'
+import { BNodeInternalData, BNodeLeafData, BNodeTypes, BNodeUnionData, IndexDataUnion, IndexTypes, NodeData, PropertyIndexData, PropertyMapData, UniqueIndexData, PropertyMapValue, ValueData, ValueTypes } from '../../structures/Subcollection.js'
 import { CreateNodeResponse } from '@fractaldb/shared/operations/CreateNode.js'
 import Transaction from './Transaction.js'
 import TransactionSubcollection from './TransactionSubcollection.js'
-import CollectionInterface from '../../interfaces/CollectionInterface.js'
+import CollectionInterface, { RootIndex } from '../../interfaces/CollectionInterface.js'
 import { CollectionOpts } from '../../interfaces/Options.js'
 import MockCollection from '../mock/MockCollection.js'
 import { Deinstantiator, TransactionInstantiableSubcollection } from './TransactionInstantiableSubcollection.js'
 import { BNode, BNodeInternal } from '@fractaldb/indexing-system/BTreeNode.js'
 import BTree from '@fractaldb/indexing-system/BTree.js'
 import { PropertyMap } from '@fractaldb/indexing-system/indexes/PropertyMap.js'
+import { PropertyBTree } from '@fractaldb/indexing-system/indexes/PropertyBTree.js'
+import { UniqueBTree } from '@fractaldb/indexing-system/indexes/UniqueBTree.js'
+import { DeleteNodeResponse } from '@fractaldb/shared/operations/DeleteNode.js'
 /**
  * transaction log contains all the updates for nodes
  * a node's value needs to get updated,
@@ -41,6 +44,7 @@ export default class TransactionCollection implements CollectionInterface {
     tx: Transaction
     opts: CollectionOpts
     mock: MockCollection
+    rootIndexes: number[] = [] // ids of RootIndexes
 
     bnode: TransactionInstantiableSubcollection<BNode<any, any>, BNodeUnionData<any>>
     index: TransactionInstantiableSubcollection<BTree<any, any> & Deinstantiator<IndexDataUnion>, IndexDataUnion>
@@ -65,8 +69,16 @@ export default class TransactionCollection implements CollectionInterface {
             let type = data[0]
             switch(type) {
                 case IndexTypes.propertyMap: {
-                    let [type, root, node, size] = data as PropertyMapIndexData
-                    return new PropertyMap(this, id, type, root, node, size)
+                    let [type, root, node, size] = data as PropertyMapData
+                    return new PropertyMap(this, id, root, node, size)
+                }
+                case IndexTypes.property: {
+                    let [type, propertyPath, root, size, uniquePath] = data as PropertyIndexData
+                    return new PropertyBTree(this, id, propertyPath, root, uniquePath ?? [], size)
+                }
+                case IndexTypes.unique: {
+                    let [type, root, size, uniquePath, subindexes] = data as UniqueIndexData
+                    return new UniqueBTree(this, id, uniquePath ?? [], root, size, subindexes ?? [])
                 }
             }
         })
@@ -87,6 +99,7 @@ export default class TransactionCollection implements CollectionInterface {
         this.bnode.releaseLocks()
         this.index.releaseLocks()
         this.node.releaseLocks()
+        this.value.releaseLocks()
     }
 
     /**
@@ -96,6 +109,8 @@ export default class TransactionCollection implements CollectionInterface {
      */
     async createNode(): Promise<CreateNodeResponse> {
         let id = await this.node.allocateID()
+
+        console.log(id)
 
         let propertyIndex = await this.createPropertyMap(id)
         let referenceIndex = await this.createPropertyMap(id)
@@ -107,6 +122,7 @@ export default class TransactionCollection implements CollectionInterface {
         }
 
         let value: NodeData = [propertyIndex.id, referenceIndex.id]
+
         await this.node.setActual(id, value)
 
         return node
@@ -121,7 +137,7 @@ export default class TransactionCollection implements CollectionInterface {
             node: node
         }
 
-        let value: PropertyMapIndexData = [index.type, index.root, index.node, 0]
+        let value: PropertyMapData = [index.type, index.root, index.node, 0]
 
         await this.index.setActual(index.id, value)
 
@@ -151,19 +167,17 @@ export default class TransactionCollection implements CollectionInterface {
     - delete powerof value
     - delete node
     */
-    async deleteNode(id: number): Promise<void> {
+    async deleteNode(id: number): Promise<DeleteNodeResponse> {
         let record = await this.node.get(id)
 
         if(!record) {
             throw new Error(`Node ${id} does not exist`)
         }
-        let power = this.node.powers.get(record[0])
-        if(!power) {
-            throw new Error(`Power of ${id} does not exist. This should never happen`)
-        }
+        let power = this.node.getOrCreatePower(record[0])
         let value = await power.get(record[1])
+
         if(!value) {
-            throw new Error(`Value of ${id} does not exist. This should never happen`)
+            throw new Error(`Power of ${record[0]} with id: ${record[1]} does not exist. This should never happen`)
         }
 
         for(let indexID of value) {
@@ -173,6 +187,10 @@ export default class TransactionCollection implements CollectionInterface {
         await power.set(record[1], null)
 
         await this.node.set(id, null)
+
+        return {
+            id
+        }
     }
 
 
@@ -190,11 +208,9 @@ export default class TransactionCollection implements CollectionInterface {
         if(!record) {
             throw new Error(`Property index ${id} does not exist`)
         }
-        let power = this.index.powers.get(record[0])
-        if(!power) {
-            throw new Error(`Power of ${id} does not exist. This should never happen`)
-        }
-        let value = await power.get(record[1])
+        let power = this.index.getOrCreatePower(record[0])
+
+        let value = await power.get(record[1]) as PropertyMapData
         if(!value) {
             throw new Error(`Value of ${id} does not exist. This should never happen`)
         }
@@ -235,10 +251,8 @@ export default class TransactionCollection implements CollectionInterface {
         if(!record) {
             throw new Error(`BNode ${id} does not exist`)
         }
-        let power = this.bnode.powers.get(record[0])
-        if(!power) {
-            throw new Error(`Power of ${id} does not exist. This should never happen`)
-        }
+        let power = this.bnode.getOrCreatePower(record[0])
+
         let bnode = await power.get(record[1])
         if(!bnode) {
             throw new Error(`Value of ${id} does not exist. This should never happen`)
@@ -324,10 +338,10 @@ export default class TransactionCollection implements CollectionInterface {
             throw new Error(`Node ${id} for edge's pointer does not exist`)
         }
         if(keypath.length === 0) {
-            let referenceIndex = await coll.getIndex(node.references)
+            let referenceIndex = await coll.index.getOrInstantiate(node.references) as PropertyMap<any>
             await referenceIndex.delete(edgeid)
         } else {
-            let lastobj = await coll.getIndex(node.properties)
+            let lastobj = await coll.index.getOrInstantiate(node.properties) as PropertyMap<any>
             for(let key of keypath) {
                 let v = await lastobj.get(key) as PropertyMapValue
                 if(v[0] !== ValueTypes.index) {
@@ -356,10 +370,8 @@ export default class TransactionCollection implements CollectionInterface {
         if(!record) {
             throw new Error(`Edge ${id} does not exist`)
         }
-        let power = this.node.powers.get(record[0])
-        if(!power) {
-            throw new Error(`Power of ${id} does not exist. This should never happen`)
-        }
+        let power = this.node.getOrCreatePower(record[0])
+
         let value = await power.get(record[1])
         if(!value) {
             throw new Error(`Value of ${id} does not exist. This should never happen`)
@@ -367,12 +379,12 @@ export default class TransactionCollection implements CollectionInterface {
 
         let [propertyindexid] = value
 
-        let propertyindex = await this.getIndex(propertyindexid)
-        let from = await propertyindex.get('from')
-        let to = await propertyindex.get('to')
+        let propertyindex = await this.index.getOrInstantiate(propertyindexid) as PropertyMap<any>
+        let [, fromid] = await propertyindex.get('from') as PropertyMapValue
+        let [, toid] = await propertyindex.get('to') as PropertyMapValue
 
-        await this.deleteRecursivePathOfEdge(from, id)
-        await this.deleteRecursivePathOfEdge(to, id)
+        await this.deleteRecursivePathOfEdge(await this.value.get(fromid) as any, id)
+        await this.deleteRecursivePathOfEdge(await this.value.get(toid) as any, id)
 
         for(let indexID of value) {
             await this.deletePropertyMapIndex(indexID)
@@ -382,14 +394,6 @@ export default class TransactionCollection implements CollectionInterface {
 
         await this.node.set(id, null)
     }
-
-    /**
-     * This will return an instantied index so that operations may be performed on it
-     */
-    async getIndex(id: number): Promise<BTree<any, any>> {
-        throw new Error('Not implemented')
-    }
-
 
     /**
     Delete value cascade deletion
@@ -402,7 +406,8 @@ export default class TransactionCollection implements CollectionInterface {
         if(!record) {
             throw new Error(`Value ${id} does not exist`)
         }
-        let power = this.value.powers.get(record[0])
+        let power = this.value.getOrCreatePower(record[0])
+
         if(!power) {
             throw new Error(`Power of ${id} does not exist. This should never happen`)
         }

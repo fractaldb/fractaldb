@@ -7,6 +7,12 @@ import InMemoryLogStoreDatabase from './InMemoryLogStoreDatabase.js'
 import InMemoryLogStoreSubcollection from './InMemoryLogStoreSubcollection.js'
 import crc32 from 'crc-32'
 import LayerInterface from '../../interfaces/LayerInterface.js'
+import { LogSetSubcollectionData } from './commands/LogSetSubcollectionData.js'
+import { LogSetPowerData } from './commands/LogSetPowerData.js'
+import { LogInitialisePower } from './commands/LogInitialisePower.js'
+import { LogInitialiseSubcollection } from './commands/LogInitialiseSubcollection.js'
+import { LogIncrementPower } from './commands/LogIncrementPower.js'
+import { LogIncrementSubcollection } from './commands/LogIncrementSubcollection.js'
 
 export default class InMemoryLogStore implements LayerInterface {
     number: number
@@ -16,7 +22,7 @@ export default class InMemoryLogStore implements LayerInterface {
     newer?: InMemoryLogStore
     older?: InMemoryLogStore
     txCount = 0
-    maxTxCount = 2
+    maxTxCount = 10
     server: FractalServer
     databases: Map<string, InMemoryLogStoreDatabase | null> = new Map()
 
@@ -69,67 +75,15 @@ export default class InMemoryLogStore implements LayerInterface {
         }
     }
 
-    private applyTxCommand(command: LogCommand) {
+    private applyTxCommand(command: LogCommand){
         switch (command[0]) {
-            case Commands.CreateCollection: {
-                let dbname = command[1]
-                let collectionname = command[2]
-                let db = this.databases.get(dbname)
-
-                if (!db) {
-                    db = new InMemoryLogStoreDatabase(this, { database: dbname })
-                    this.databases.set(dbname, db)
-                }
-                let collection = db.collections.get(collectionname)
-                if (!collection) {
-                    collection = new InMemoryLogStoreCollection(this, {database: dbname, collection: collectionname})
-                    db.collections.set(collectionname, collection)
-                }
-                return
-            }
-            case Commands.CreateDatabase: {
-                let dbname = command[1]
-                let db = this.databases.get(dbname)
-                if (!db) {
-                    db = new InMemoryLogStoreDatabase(this, { database: dbname })
-                    this.databases.set(dbname, db)
-                }
-                return
-            }
-            case Commands.DeleteCollection: {
-                let dbname = command[1]
-                let collectionname = command[2]
-                let db = this.databases.get(dbname)
-                if (db) db.collections.set(collectionname, null)
-                return
-            }
-            case Commands.DeleteDatabase: {
-                let dbname = command[1]
-                return this.databases.set(dbname, null)
-            }
-            case Commands.CreatePowerOfCollection: {
-                let dbname = command[1]
-                let collectionname = command[2]
-                let db = this.databases.get(dbname)
-
-                if(!db) {
-                    db = new InMemoryLogStoreDatabase(this, { database: dbname })
-                    this.databases.set(dbname, db)
-                }
-                let collection = db.collections.get(collectionname)
-                if (!collection) {
-                    collection = new InMemoryLogStoreCollection(this, { database: dbname, collection: collectionname })
-                    db.collections.set(collectionname, collection)
-                }
-                let powerOfCollection = (collection as any)[command[3]].get(command[4]) as InMemoryLogStoreSubcollection<any>
-                if (!powerOfCollection) {
-
-                }
-                return
-            }
+            case Commands.IncrementSubcollectionHighestID: return LogIncrementSubcollection(this, command)
+            case Commands.IncrementPowerHighestID: return LogIncrementPower(this, command)
+            case Commands.InitialiseSubcollection: return LogInitialiseSubcollection(this, command)
+            case Commands.InitialisePower: return LogInitialisePower(this, command)
+            case Commands.SetPowerOfData: return LogSetPowerData(this, command)
+            case Commands.SetSubcollectionData: return LogSetSubcollectionData(this, command)
         }
-
-        return
 
         // return AssertUnreachable(command[0])
     }

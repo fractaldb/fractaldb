@@ -11,7 +11,6 @@ export default class InMemoryLogStorePower<V> extends ManagesIDAllocation implem
     inMemoryLogStore: InMemoryLogStore
 
     constructor(inMemoryLogStore: InMemoryLogStore, opts: PowerOpts){
-        // TODO, log should pull paramaeters from the older log or lower layers
         super()
         this.opts = opts
         this.inMemoryLogStore = inMemoryLogStore
@@ -22,9 +21,10 @@ export default class InMemoryLogStorePower<V> extends ManagesIDAllocation implem
         return this.inMemoryLogStore.server
     }
 
-    async get(id: number): Promise<V | null> {
+    async get(id: number): Promise<V | null | undefined> {
         let string = this.items.get(id)
         if (string) return this.server.adn.deserialize(string) as V
-        return null
+        if (string === null) return null
+        return undefined // doesn't exist in this layer
     }
 }

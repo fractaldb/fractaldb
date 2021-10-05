@@ -26,7 +26,12 @@ export function LogSetPowerData(logStore: InMemoryLogStore, command: SetPowerOfD
         subcoll.powers.set(power, pow)
     }
 
-    // console.log(id, logStore.server.adn.deserialize(logStore.server.adn.serialize(data)))
+    if(data === null) {
+        pow.freeIDs.add(id)
+        pow.usedIDs.delete(id)
+    } else {
+        pow.freeIDs.delete(id)
+        pow.usedIDs.delete(id)
+    }
     pow.items.set(id, logStore.server.adn.serialize(data))
-    pow.usedIDs.delete(id)
 }

@@ -21,6 +21,13 @@ export function LogSetSubcollectionData(logStore: InMemoryLogStore, command: Set
 
     let subcoll = coll[subcollection]
 
+    if(data === null) {
+        subcoll.freeIDs.add(id)
+        subcoll.usedIDs.delete(id)
+    } else {
+        subcoll.freeIDs.delete(id)
+        subcoll.usedIDs.delete(id)
+    }
     subcoll.items.set(id, logStore.server.adn.serialize(data))
     subcoll.usedIDs.delete(id)
 }

@@ -52,35 +52,44 @@ export default class Transaction implements LayerInterface {
             - return success to the client
      */
     async commit(): Promise<void> {
-        if(this.status !== TxStatuses.ACTIVE) {
-            throw new Error('Transaction is not active')
-        }
-        this.status = TxStatuses.COMMITING
-        let writes: LogCommand[] = []
-        for (let [name, db] of this.databases.entries()) {
-            if(db === null){
-                writes.push([Commands.DeleteDatabase, name])
-            } else {
-                writes.push(...db.getWrites())
+        try {
+            if(this.status !== TxStatuses.ACTIVE) {
+                throw new Error('Transaction is not active')
             }
+            this.status = TxStatuses.COMMITING
+            let writes: LogCommand[] = []
+            for (let [name, db] of this.databases.entries()) {
+                if(db === null){
+                    writes.push([Commands.DeleteDatabase, name])
+                } else {
+                    writes.push(...db.getWrites())
+                }
+            }
+
+            if (writes.length > 0) {
+                let inMemoryLog = await this.server.mockLayer.findFreeLogStore()
+                await inMemoryLog.applyTxCommands(writes)
+            }
+        } catch (error) {
+            return this.abort(error as Error)
         }
 
-        if (writes.length > 0) {
-            let inMemoryLog = await this.server.mockLayer.findFreeLogStore()
-            await inMemoryLog.applyTxCommands(writes)
-        }
+        this.releaseResources()
+        this.status = TxStatuses.COMMITTED
+    }
 
-        /** Unlock all resources */
+    releaseResources() {
         for (let [name, db] of this.databases.entries()) {
             if(db === null){
                 continue
             }
-            db.releaseLocks()
+            db.releaseResources()
         }
-        this.status = TxStatuses.COMMITTED
     }
 
-    async abort(): Promise<void> {
-
+    async abort(error?: Error): Promise<void> {
+        this.releaseResources()
+        this.status = TxStatuses.ABORTED
+        throw error
     }
 }

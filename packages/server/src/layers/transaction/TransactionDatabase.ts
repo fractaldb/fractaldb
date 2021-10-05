@@ -37,12 +37,12 @@ export default class TransactionDatabase implements DatabaseInterface {
         return writes
     }
 
-    releaseLocks() {
+    releaseResources() {
         for(const [name, collection] of this.collections.entries()) {
             if(collection === null){
                 continue
             }
-            collection.releaseLocks()
+            collection.releaseResources()
         }
     }
 }

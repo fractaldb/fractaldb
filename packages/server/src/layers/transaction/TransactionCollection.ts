@@ -95,6 +95,10 @@ export default class TransactionCollection implements CollectionInterface {
         return writes
     }
 
+    releaseResources() {
+        this.releaseLocks()
+    }
+
     releaseLocks() {
         this.bnode.releaseLocks()
         this.index.releaseLocks()

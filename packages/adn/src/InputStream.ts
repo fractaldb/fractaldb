@@ -38,7 +38,9 @@ export class InputStream {
      * Get next character in string
      */
     next() {
-        return this.input.charAt(this.pos++)
+        let ch = this.input.charAt(this.pos++)
+        // console.log(Object.keys(DataTypes).find(key => DataTypes[key as 'ARRAY'] == ch) ?? ch)
+        return ch
     }
 
     /**

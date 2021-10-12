@@ -1,6 +1,7 @@
 
 import TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
-import { BNodeTypes, BNodeUnionData } from '@fractaldb/fractal-server/structures/Subcollection.js'
+import { BNodeUnionData } from '@fractaldb/fractal-server/structures/Subcollection.js'
+import { BNodeTypes } from '@fractaldb/shared/structs/DataTypes.js'
 import BTree from './BTree.js'
 // BTree Node
 

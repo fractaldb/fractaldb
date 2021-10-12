@@ -30,24 +30,24 @@ export class TransactionInstantiableSubcollection<I extends Deinstantiator<V>, V
         if (!instance) {
             let item = await this.getActual(id)
             if (item) {
-                instance = await this.instantiator(id, item)
+                instance = this.instantiator(id, item)
                 this.instances.set(id, instance)
+            } else {
+                return null
             }
-            return null
         }
         return instance
     }
 
     async setInstance(id: number, instance: I) {
-        await this.lock(id)
-        this.modified.add(id)
+        await this.setAsModified(id)
         this.instances.set(id, instance)
     }
 
-    getWrites(): LogCommand[] {
+    async getWrites(): Promise<LogCommand[]> {
         for(let id of this.modified) {
-            this.setActual(id, this.instances.get(id)!.deinstantiate())
+            await this.setActual(id, this.instances.get(id)!.deinstantiate())
         }
-        return super.getWrites()
+        return await super.getWrites()
     }
 }

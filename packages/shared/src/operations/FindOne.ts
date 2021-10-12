@@ -1,12 +1,13 @@
-import { Entity } from '../utils/Entity.js'
+import { NodeStruct } from '../structs/NodeStruct.js'
 import { BaseOperation } from './BaseOperation.js'
 
 export interface FindOne extends BaseOperation {
     op: 'FindOne'
+    database: string
+    collection: string
     query: any
-    projection: any
 }
 
 export interface FindOneResponse {
-    entity: Entity | null
+    node: NodeStruct | null
 }

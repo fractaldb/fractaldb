@@ -1,17 +1,20 @@
-import { Entity } from '../utils/Entity.js'
+import { NodeStruct } from '../structs/NodeStruct.js'
 import { BaseOperation } from './BaseOperation.js'
 
 export interface FindMany extends BaseOperation {
     op: 'FindMany'
+    database: string
+    collection: string
     query: any
-    batchSize: Number
+    batchSize: number
+    limit: number
     closeCursor: boolean
     projection?: any
 }
 
 export interface FindManyResponse {
-    cursorID: string
-    entities: Entity[]
+    cursorID?: string
+    nodes: NodeStruct[]
 }
 
 export interface FindManyMore extends BaseOperation {
@@ -20,5 +23,5 @@ export interface FindManyMore extends BaseOperation {
 }
 
 export interface FindManyMoreResponse {
-    entities: Entity[]
+    nodes: NodeStruct[]
 }

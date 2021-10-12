@@ -57,8 +57,9 @@ export class Tokenizer {
             case DataTypes.FALSE: return { type: 'FALSE' }
             case DataTypes.TRUE: return { type: 'TRUE' }
             case DataTypes.NULL: return { type: 'NULL' }
+            case DataTypes.UNDEFINED: return { type: 'UNDEFINED' }
             default:
-                throw new Error(`This should never be reached: ${ch}`)
+                throw new Error(`This should never be reached: ${ch} (charCode: ${ch.charCodeAt(0)})`)
         }
     }
 

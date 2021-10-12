@@ -1,10 +1,10 @@
-import { IncrementSubcollectionHighestID } from '../../../logcommands/commands.js'
+import { AddRootIndex } from '../../../logcommands/commands.js'
 import InMemoryLogStore from '../InMemoryLogStore.js'
 import InMemoryLogStoreCollection from '../InMemoryLogStoreCollection.js'
 import InMemoryLogStoreDatabase from '../InMemoryLogStoreDatabase.js'
 
-export function LogIncrementSubcollection(logStore: InMemoryLogStore, command: IncrementSubcollectionHighestID){
-    const [type, database, collection, subcollection] = command
+export function AddRootIndexCommand(logStore: InMemoryLogStore, command: AddRootIndex){
+    let [type, database, collection, index] = command
 
     let db = logStore.databases.get(database)
 
@@ -18,10 +18,7 @@ export function LogIncrementSubcollection(logStore: InMemoryLogStore, command: I
         db.collections.set(collection, coll)
     }
 
-    let subcoll = coll[subcollection]
-
-    subcoll.increments++
-    let id = ++subcoll.mock.highestID
-    subcoll.freed.add(id)
-    subcoll.mock.usedIDs.add(id)
+    coll.addedRootIndexes.add(index)
+    coll.removedRootIndexes.delete(index)
+    coll.mock.rootIndexes.add(index)
 }

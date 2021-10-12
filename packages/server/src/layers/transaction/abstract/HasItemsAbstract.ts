@@ -18,6 +18,14 @@ export default abstract class HasItemsAbstract {
         this.releaseLockCallbacks = []
     }
 
+    releaseUsedIDs() {
+        for (let id of this.assignedIds) {
+            this.allocator.usedIDs.delete(id)
+            this.allocator.freeIDs.add(id)
+        }
+        this.assignedIds.clear()
+    }
+
     async allocateID(): Promise<number> {
         // check if there are any free IDs available in this transaction's subcollection, and return the first one
         if (this.freeIds.size > 0) {

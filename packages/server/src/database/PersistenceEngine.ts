@@ -8,6 +8,10 @@ import { FractalServer } from './Server.js'
 
 */
 
+export enum LogStatuses {
+    PERSISTED,
+    UNPERSISTED
+}
 
 export enum PersistenceEngineStatus {
     WAITING,
@@ -32,24 +36,28 @@ export default class PersistenceEngine {
     }
 
     async persist() {
-        while(this.leastRecentLogStore.isFull) {
+        while(this.leastRecentLogStore.isFull && this.leastRecentLogStore.status !== LogStatuses.PERSISTED) {
             this.status = PersistenceEngineStatus.PERSISTING
 
             await this.write(this.leastRecentLogStore)
 
             // close the file handler for the old log store
             await this.leastRecentLogStore.close()
+            this.leastRecentLogStore.status = LogStatuses.PERSISTED
 
-            // set the least recent log store to the newer log store
-            this.leastRecentLogStore = this.leastRecentLogStore.newer as InMemoryLogStore
+            if(this.leastRecentLogStore.newer) {
+                // set the least recent log store to the newer log store
+                this.leastRecentLogStore = this.leastRecentLogStore.newer as InMemoryLogStore
 
-            // unlink the older log store so it can be garbage collected
-            this.leastRecentLogStore.older = undefined
+                // unlink the older log store so it can be garbage collected
+                this.leastRecentLogStore.older = undefined
+            }
+
         }
         this.status = PersistenceEngineStatus.WAITING
     }
 
     async write(logStore: InMemoryLogStore) {
-        console.log('write called')
+        // console.log('write called')
     }
 }

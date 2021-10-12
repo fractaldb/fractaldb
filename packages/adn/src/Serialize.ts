@@ -51,7 +51,7 @@ const serializers: { [key in DataTypeKeys]: SerializerFN } = {
     'NUMBER': (value: number) => DataTypes.NUMBER + value.toString(16) + DataTypes.NULLBYTE,
     'STRING': (value: string) => DataTypes.STRING + value.replace('\x00', DataTypes.ESCAPECHAR + '\x00') + DataTypes.NULLBYTE,
     'ESCAPECHAR': () => DataTypes.ESCAPECHAR,
-    'UNDEFINED': () => '',
+    'UNDEFINED': () => DataTypes.UNDEFINED,
     'EXTENSION': () => DataTypes.EXTENSION
 }
 

@@ -52,9 +52,8 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
         if(recordValue) { // the value exists
             const [power, index] = recordValue
 
-            let value = this.powers.get(power)
-                ?.get(index)
-
+            let value = await this.getOrCreatePower(power)
+                .get(index)
             if(value) return value
 
             throw new Error('Tried to get power data that was deleted or does not exist')
@@ -63,7 +62,7 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
         return null // value doesn't exist or has been deleted
     }
 
-    getWrites(): LogCommand[] {
+    async getWrites(): Promise<LogCommand[]> {
         let writes: LogCommand[] = []
         for (let [id, value] of this.items) {
             writes.push([
@@ -77,10 +76,17 @@ export default class TransactionSubcollection<V> extends HasItemsAbstract implem
         }
 
         for(let power of this.powers.values()) {
-            writes.push(...power.getWrites())
+            writes.push(...await power.getWrites())
         }
 
         return writes
+    }
+
+    releaseUsedIDs() {
+        for(let power of this.powers.values()) {
+            power.releaseUsedIDs()
+        }
+        super.releaseUsedIDs()
     }
 
     releaseLocks() {

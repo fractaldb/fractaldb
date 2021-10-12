@@ -27,8 +27,8 @@ export function LogIncrementPower(logStore: InMemoryLogStore, command: Increment
         subcoll.powers.set(power, pow)
     }
 
-    if(!pow.initialised) {
-        throw new Error(`Power ${power} for subcollection ${subcollection} has not been initialised`)
-    }
-    pow.highestID++
+    pow.increments++
+    let id = ++pow.mock.highestID
+    pow.freed.add(id)
+    pow.mock.usedIDs.add(id)
 }

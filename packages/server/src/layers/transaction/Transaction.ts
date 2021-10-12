@@ -1,3 +1,4 @@
+import EventEmitter from 'events'
 import { FractalServer } from '../../database/Server.js'
 import LayerInterface from '../../interfaces/LayerInterface.js'
 import { Commands, LogCommand } from '../../logcommands/commands.js'
@@ -10,14 +11,16 @@ export enum TxStatuses {
     // INACTIVE = 'inactive'
 }
 
-export default class Transaction implements LayerInterface {
+export default class Transaction extends EventEmitter implements LayerInterface {
     id: string // transaction id
     server: FractalServer
     databases: Map<string, TransactionDatabase | null> = new Map()
     waitingOn?: string // resource that this transaction is waiting on
     status: TxStatuses
+    shouldLock: boolean = true
 
     constructor(server: FractalServer, txID: string)  {
+        super()
         this.server = server
         this.id = txID
         this.status = TxStatuses.ACTIVE
@@ -62,34 +65,46 @@ export default class Transaction implements LayerInterface {
                 if(db === null){
                     writes.push([Commands.DeleteDatabase, name])
                 } else {
-                    writes.push(...db.getWrites())
+                    writes.push(...await db.getWrites())
                 }
             }
 
             if (writes.length > 0) {
                 let inMemoryLog = await this.server.mockLayer.findFreeLogStore()
-                await inMemoryLog.applyTxCommands(writes)
+                await inMemoryLog.writeCommands(writes)
             }
         } catch (error) {
             return this.abort(error as Error)
         }
 
-        this.releaseResources()
+        this.releaseLocks()
         this.status = TxStatuses.COMMITTED
+        this.emit('commited')
     }
 
-    releaseResources() {
+    releaseLocks() {
         for (let [name, db] of this.databases.entries()) {
             if(db === null){
                 continue
             }
-            db.releaseResources()
+            db.releaseLocks()
+        }
+    }
+
+    releaseUsedIDs() {
+        for (let [name, db] of this.databases.entries()) {
+            if(db === null){
+                continue
+            }
+            db.releaseUsedIDs()
         }
     }
 
     async abort(error?: Error): Promise<void> {
-        this.releaseResources()
+        this.releaseLocks()
+        this.releaseUsedIDs()
         this.status = TxStatuses.ABORTED
+        this.emit('aborted')
         throw error
     }
 }

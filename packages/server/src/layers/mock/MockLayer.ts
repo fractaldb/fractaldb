@@ -12,10 +12,17 @@ export default class MockLayer {
         this.server = server
     }
 
+    /**
+     * Ensure the disk layer is initialised before calling this operation
+     */
+    async initialise() {
+        // initialise the layer based on the disk information in the server
+    }
+
     getOrCreateMockDatabase(db: string): MockDatabase {
         let database = this.databases.get(db)
         if (!database) {
-            database = new MockDatabase(this.server, { database: db })
+            database = new MockDatabase(this.server, { database: db }, { collections: new Map() })
             this.databases.set(db, database)
         }
         return database

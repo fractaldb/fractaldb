@@ -21,7 +21,7 @@ export class FractalClient extends EventEmitter {
     constructor({ port, host, ADNExtensions }: FractalClientOptions = { port: 24000, host: 'localhost', ADNExtensions: []}){
         super()
 
-        ADNExtensions.push(new EntityIDExtension('\x01'))
+        // ADNExtensions.push(new EntityIDExtension('\x01'))
         this.adn = new ADN(ADNExtensions)
         this.socket = net.createConnection({ port, host })
         this.socket.setNoDelay(false)

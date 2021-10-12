@@ -56,7 +56,7 @@ const deserializers: { [key in DataTypeKeys]: (tokenizer: Tokenizer, token: Toke
     'MAP': deserializeMap,
     'SET': () => { throw new Error('Could not deserialize: SET') }, //TODO
     'EOF': () => undefined,
-    'UNDEFINED': () => { throw new Error('Could not deserialize: UNDEFINED') },
+    'UNDEFINED': () => undefined,
     'FALSE': () => false,
     'TRUE': () => true,
     'NULL': () => null,

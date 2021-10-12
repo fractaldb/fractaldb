@@ -33,9 +33,14 @@ export default class TransactionPower<V> extends HasItemsAbstract implements has
         return null
     }
 
-    getWrites(): LogCommand[] {
+    releaseUsedIDs() {
+        super.releaseUsedIDs()
+    }
+
+    async getWrites(): Promise<LogCommand[]> {
         let writes: LogCommand[] = []
         for (let [id, value] of this.items) {
+            // console.log([...value!].map(v => v.charCodeAt(0).toString(16) + ' ' + v))
             writes.push([
                 Commands.SetPowerOfData,
                 this.opts.database,

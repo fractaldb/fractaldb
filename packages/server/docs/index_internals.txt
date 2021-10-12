@@ -95,3 +95,74 @@ propertyMap process
     - add node to index
 - for each shouldUpdate
     - update node in index
+
+
+----
+
+Get me all of the nodes where the following is true
+    where <organisation:tool.id>
+    where <instance of.*.to:task.id>
+    where <assignee.*.to:me>
+
+function getOrganisationIndex(view)
+    - get the root index for "organisation"
+    - let index be rootIndex.get(view.organisation) as UniqueIndex
+
+function setupIndexesForView(view)
+    - let index be getOrganisationIndex(view)
+    - let indexPaths be view.indexPaths
+    - for each indexPath
+        - call index.ensureIndex(indexPath)
+        - let index be indexPath.getSubindex(indexes)
+    - call index.ensureIndexes([instanceof.*.to]])
+    - let index be index.getSubindex([instanceof.*.to])
+    - let index be index.get(task.id) as UniqueIndex
+    - call index.ensureIndexes([assignee.*.to])
+
+- task : {
+    multiselect: [
+        edge1 -> a
+        edge2 -> b
+        edge3 -> c
+    ]
+}
+
+- get me all the nodes which belong in organisation:X and
+    where instance of:task
+    where multiselect.*.to:australia
+
+-
+
+
+users.ensureRootIndex([
+	['email', subindexes]
+])
+
+items.ensureRootIndex([
+	['organisation']
+])
+
+col.ensureRootIndex(type: IndexTypes.unique, IndexTypes.property, path: string) {
+    let rootIndexes = col.rootIndexes
+    let exists = false
+    for (let id of rootIndexes) {
+        let index = this.getIndex(id) as RootIndex | undefined
+        if (index) {
+            if(type === IndexTypes.unique && path === index.uniquePath) {
+                exists = true
+                break
+            } else if(type === IndexTypes.property && path === index.propertyPath) {
+                exists = true
+                break
+            }
+        }
+    }
+    if(!exists) {
+        let index = new RootIndex(type, path)
+        rootIndexes.push(index.id)
+        this.insert(index)
+    }
+}
+
+// kanban
+// filtering system

@@ -114,7 +114,7 @@ export default class LogEngine {
 
 
             for (let tx of txs) {
-                await currentLogStore.applyTxCommands(tx)
+                currentLogStore.applyTxCommands(tx)
                 currentLogStore.txCount++
             }
             if(!oldestLog){

@@ -25,24 +25,33 @@ export default class TransactionDatabase implements DatabaseInterface {
         return collection
     }
 
-    getWrites(): LogCommand[] {
+    async getWrites(): Promise<LogCommand[]> {
         let writes: LogCommand[] = []
         for(const [name, collection] of this.collections.entries()) {
             if(collection === null){
                 writes.push([Commands.DeleteCollection, this.opts.database, name])
             } else {
-                writes.push(...collection.getWrites())
+                writes.push(...await collection.getWrites())
             }
         }
         return writes
     }
 
-    releaseResources() {
+    releaseLocks() {
         for(const [name, collection] of this.collections.entries()) {
             if(collection === null){
                 continue
             }
-            collection.releaseResources()
+            collection.releaseLocks()
+        }
+    }
+
+    releaseUsedIDs() {
+        for(const [name, collection] of this.collections.entries()) {
+            if(collection === null){
+                continue
+            }
+            collection.releaseUsedIDs()
         }
     }
 }

@@ -1,10 +1,4 @@
-
-
-export enum DataTypes {
-    EOF = '',
-    NULLBYTE = '\x00',
-    ESCAPECHAR = '\x01'
-}
+import { DataTypes } from '@fractaldb/adn/Types.js'
 
 export function splitBufferStream(cb: (message: string) => void ) {
     let lastStr = ''
@@ -15,22 +9,23 @@ export function splitBufferStream(cb: (message: string) => void ) {
         let start = 0
         let i = 0
         let msg = ''
-        
+
         while (i < str.length ) {
-            if(str[i] === DataTypes.EOF) {
-                lastStr = str.slice(0, i)
-                break
-            }
-            if(str[i] === DataTypes.ESCAPECHAR) i++
-            else if(str[i] === DataTypes.NULLBYTE) {
+            if(str[i] === DataTypes.ESCAPECHAR) {
+                i++
+            } else if(str[i] === DataTypes.NULLBYTE) {
                 cb(msg)
                 msg = ''
-                start = i + 1
+                i++ // skip separator byte)
+                start = i
+                continue
             }
 
             msg += str[i]
 
             i++
         }
+
+        lastStr = str.slice(start, i)
     }
 }

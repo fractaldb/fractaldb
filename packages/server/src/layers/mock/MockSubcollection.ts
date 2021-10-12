@@ -7,17 +7,27 @@ import InMemoryLogStoreCollection from '../inMemoryLogStore/InMemoryLogStoreColl
 import { SubcollectionOpts } from '../../interfaces/Options.js'
 import AllocatesIDsInterface from '../../interfaces/AllocatesIDsInterface.js'
 import InMemoryLogStoreSubcollection from '../inMemoryLogStore/InMemoryLogStoreSubcollection.js'
-import ManagesIDAllocation from '../../interfaces/ManagesIDAllocation.js'
+import ManagesIDAllocation, { IDInformation } from '../../interfaces/ManagesIDAllocation.js'
 import { Commands, IncrementSubcollectionHighestID, InitialiseSubcollection } from '../../logcommands/commands.js'
 
-export default class MockSubcollection<V> implements AllocatesIDsInterface {
+export type PowerInfo = {
+    powers: Map<number, IDInformation>
+}
+
+export type SubcollectionInfo = IDInformation & PowerInfo
+
+export default class MockSubcollection<V> extends ManagesIDAllocation implements AllocatesIDsInterface {
     server: FractalServer
     opts: SubcollectionOpts
     powers: Map<number, MockPower<V>> = new Map()
 
-    constructor(server: FractalServer, opts: SubcollectionOpts) {
+    constructor(server: FractalServer, opts: SubcollectionOpts, subcollectionInfo: SubcollectionInfo) {
+        super(subcollectionInfo)
         this.server = server
         this.opts = opts
+        for(let [power, powerInfo] of subcollectionInfo.powers) {
+            this.powers.set(power, new MockPower(server, {...opts, power}, powerInfo))
+        }
     }
 
     async predicate<X>(cb: (layer?: SubcollectionInterface<V>) => X | Promise<X>, startFrom?: InMemoryLogStore ){
@@ -37,40 +47,14 @@ export default class MockSubcollection<V> implements AllocatesIDsInterface {
         throw new Error('Disk layer not yet implemented')
     }
 
-    async getOrInitialiseSubcollectionInMostRecentLogStore() {
-        let log = this.mockLayer.mostRecentLogStore
-
-        let db = log.databases.get(this.opts.database)
-        if (!db) {
-            db = new InMemoryLogStoreDatabase(log, { database: this.opts.database })
-            log.databases.set(this.opts.database, db)
-        }
-        let collection = db.collections.get(this.opts.collection)
-        if (!collection) {
-            collection = new InMemoryLogStoreCollection(log, { database: this.opts.database, collection: this.opts.collection })
-            db.collections.set(this.opts.collection, collection)
-        }
-        let subcollection = collection[this.opts.subcollection] as unknown as InMemoryLogStoreSubcollection<V>
-        if(!subcollection.initialised) {
-            let nextMostRecent = log.older ? await this.predicate<ManagesIDAllocation | undefined>(layer => layer instanceof ManagesIDAllocation ? layer : undefined, log.older) : undefined
-            let freeIDs = nextMostRecent ? new Set(nextMostRecent.freeIDs) : new Set<number>()
-            let usedIDs = nextMostRecent ? new Set(nextMostRecent.usedIDs) : new Set<number>()
-            let highestID = nextMostRecent ? nextMostRecent.highestID : 0
-
-            let command: InitialiseSubcollection = [Commands.InitialiseSubcollection, this.opts.database, this.opts.collection, this.opts.subcollection, highestID, [...freeIDs, ...usedIDs]]
-            await log.applyTxCommands([command])
-
-            // reset freeIDs and usedIDs, as they may be currently being used
-            subcollection.freeIDs = freeIDs
-            subcollection.usedIDs = usedIDs
-        }
-        return subcollection
-    }
-
     getOrCreateMockPower(power: number): MockPower<V> {
         let powerClass = this.powers.get(power)
         if (!powerClass) {
-            powerClass = new MockPower(this.server, {...this.opts, power})
+            powerClass = new MockPower(this.server, {...this.opts, power}, {
+                highestID: 0,
+                freeIDs: new Set(),
+                usedIDs: new Set()
+            })
             this.powers.set(power, powerClass)
         }
         return powerClass
@@ -81,20 +65,19 @@ export default class MockSubcollection<V> implements AllocatesIDsInterface {
     }
 
     async allocateID(): Promise<number> {
-        let latest = await this.getOrInitialiseSubcollectionInMostRecentLogStore()
-
-        if(latest.freeIDs.size === 0) {
+        if(this.freeIDs.size === 0) {
             // log the fact that we're incrementing the highest ID, this is considered a write command
             let command: IncrementSubcollectionHighestID = [Commands.IncrementSubcollectionHighestID, this.opts.database, this.opts.collection, this.opts.subcollection]
-            await this.mockLayer.mostRecentLogStore.applyTxCommands([command])
+            await this.mockLayer.mostRecentLogStore.writeCommands([command])
 
-            let id = latest.highestID
-            latest.usedIDs.add(id)
+            let id = this.highestID
+            this.freeIDs.delete(id) // remove the ID from the freeIDs set
+            this.usedIDs.add(id) // add the ID to the usedIDs set
             return id
         } else {
-            let id = [...latest.freeIDs][0]
-            latest.freeIDs.delete(id)
-            latest.usedIDs.add(id)
+            let id = [...this.freeIDs][0]
+            this.freeIDs.delete(id)
+            this.usedIDs.add(id)
             return id
         }
     }
@@ -106,14 +89,3 @@ export default class MockSubcollection<V> implements AllocatesIDsInterface {
             ?.[this.opts.subcollection] as unknown as SubcollectionInterface<V> | undefined
     }
 }
-
-// allocate algorithm
-// 1. get the most recent log store
-// 2. get or create layer for this subcollection
-// 3. if the layer exists, return it
-// 4. if the layer does not exist, create it, use predicate to get values for Instantiation
-
-
-// tx wants to allocate id for a new item
-// gets mock layer
-//

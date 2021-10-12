@@ -1,7 +1,8 @@
 import { FractalClient } from '@fractaldb/fractal-client'
 import { FractalServer } from '@fractaldb/fractal-server'
-import { EntityID } from '@fractaldb/adn/EntityID.js'
 import { runner } from '@framework-tools/catchit'
+import { ValueTypes } from '@fractaldb/shared/structs/DataTypes.js'
+import { NodeStruct } from '@fractaldb/shared/structs/NodeStruct'
 
 let { describe, expect, run, test} = runner()
 
@@ -28,10 +29,16 @@ let col = client.db('main').collection('items')
     // BENCHMARK CODE
     // check the time to read a doc 100k times
 
-    // let arr = new Array(100000)
-    // let promises = arr.map(() => col.findOne({}))
-    // for(let i = 0; i < 100000; i++) {
-    //     col.findOne({})
+// console.time('create')
+// let itr = 10000
+// // let arr = new Array(itr)
+// let promises = []
+// // let promises = arr.map(() => col.findOne({}))
+// for(let i = 0; i < itr; i++) {
+//     promises.push(col.createNode())
+// }
+// let results = await Promise.all(promises)
+// console.timeEnd('create')
 
     // await server.stop()
     // await client.close()`
@@ -41,31 +48,54 @@ describe('locking system', () => {
     test.todo('deadlock throws TransientError to transaction during a deadlock (non-offending)')
 })
 
-describe('subcollections', () => {
-    describe('nodes', () => {
-        test('nodes can be created', async () => {
-            let node = await col.createNode()
-
-            expect(node.database).toBe('main')
-            expect(node.collection).toBe('items')
-
-            expect(node.id).toBe(1)
-        })
-        test('nodes can be deleted', async () => {
-            let node = await col.createNode()
-            await col.deleteNode(node.id)
-        })
-        test.todo('nodes can be updated')
-        test.todo('nodes can be queried')
-        test.todo('nodes delete old RecordValues when updating')
-        test.todo('nodes persist across restarts')
+describe('indexes', () => {
+    test('can create root indexes', async () => {
+        let node = await col.createNode()
+        await col.indexSet(node.properties, 'organisation', [ValueTypes.value, 'acme co'])
+        let { id } = await col.ensureRootIndex('unique', ['email'], false)
+        await col.deleteNode(node.id)
     })
-    test.todo('old recordvalues are deleted when updating size of a value')
-    test.todo('set operations use freeIDs')
-    test.todo('record changes persist across restarts')
-    test.todo('power changes persist across restarts')
-    test.todo('power collection values go to correct power of allocation locations')
+
+    test('can findMany using root index', async () => {
+        let node = await col.createNode()
+        await col.indexSet(node.properties, 'email', [ValueTypes.value, 'abc@test.com'])
+        let result = await col.findMany({
+            organisation: 'abc'
+        })
+        await col.deleteNode(node.id)
+        expect(result.nodes.find((n: NodeStruct) => n.id === node.id)?.id).toBe(node.id)
+    })
 })
+
+// describe('subcollections', () => {
+//     describe('nodes', () => {
+//         test('nodes can be created', async () => {
+//             let node = await col.createNode()
+
+//             expect(node.database).toBe('main')
+//             expect(node.collection).toBe('items')
+//         })
+//         test('nodes can be deleted', async () => {
+//             await col.deleteNode(1)
+//         })
+
+//         test('node properties can be updated', async () => {
+//             let node = await col.createNode()
+//             await col.indexSet(node.properties, 'key', [ValueTypes.value, 'value'])
+//             let { type, value } = await col.indexGet(node.properties, 'key')
+//             expect(value).toBe('value')
+//             expect(type).toBe(ValueTypes.value)
+//         })
+//         test.todo('nodes can be queried')
+//         test.todo('nodes delete old RecordValues when updating')
+//         test.todo('nodes persist across restarts')
+//     })
+//     test.todo('old recordvalues are deleted when updating size of a value')
+//     test.todo('set operations use freeIDs')
+//     test.todo('record changes persist across restarts')
+//     test.todo('power changes persist across restarts')
+//     test.todo('power collection values go to correct power of allocation locations')
+// })
 
 
 

@@ -2,14 +2,19 @@ import { NodeStruct } from '@fractaldb/shared/structs/NodeStruct.js'
 import TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
 import BTree, { EmptyLeaf } from '../BTree.js'
 import { UniqueBTree } from './UniqueBTree.js'
-import { IndexTypes, PropertyIndexData, PropertyMapValue, ValueTypes } from '@fractaldb/fractal-server/structures/Subcollection.js'
+import { PropertyIndexData, PropertyMapValue } from '@fractaldb/fractal-server/structures/Subcollection.js'
 import { PropertyMap } from './PropertyMap.js'
+import { IndexTypes, ValueTypes } from '@fractaldb/shared/structs/DataTypes.js'
 
-export class PropertyBTree<K, V> extends BTree <string, UniqueBTree<K>> {
-    propertyPath: string[]
-    uniquePropertyPath: string[]
+type K = string | number
+type V = number
+// propertyBTree value is a uniqueIndexID
+export class PropertyBTree extends BTree <K, V> {
+    readonly type = IndexTypes.property
+    propertyPath: K[]
+    uniquePropertyPath: K[]
 
-    constructor(txState: TransactionCollection, id: number, propertyPath: string[], root: number, uniquePropertyPath: string[], size: number, maxNodeSize?: number){
+    constructor(txState: TransactionCollection, id: number, propertyPath: K[], root: number, uniquePropertyPath: K[], size: number, maxNodeSize?: number){
         super(txState, id, root, size, maxNodeSize)
         this.propertyPath = propertyPath
         this.uniquePropertyPath = uniquePropertyPath
@@ -29,8 +34,7 @@ export class PropertyBTree<K, V> extends BTree <string, UniqueBTree<K>> {
     }
 
     async getValueOfNode(node: NodeStruct): Promise<any | undefined> {
-        let index = await this.txState.index.getOrInstantiate(node.properties) as PropertyMap<K>
-
+        let index = await this.txState.index.getOrInstantiate(node.properties) as PropertyMap
         let i = 0
         while(i < this.propertyPath.length) {
             let value = await index.get(this.propertyPath[i] as unknown as K) as PropertyMapValue
@@ -39,7 +43,7 @@ export class PropertyBTree<K, V> extends BTree <string, UniqueBTree<K>> {
             let [type, id] = value
             switch (type) {
                 case ValueTypes.index: {
-                    index = await this.txState.index.getOrInstantiate(id) as PropertyMap<K>
+                    index = await this.txState.index.getOrInstantiate(id) as PropertyMap
                     if(i === this.propertyPath.length - 1) {
                         return index
                     }
@@ -74,35 +78,35 @@ export class PropertyBTree<K, V> extends BTree <string, UniqueBTree<K>> {
      * - else
      * - return [[this, value], ...value.getIndexesFor(doc)]
      */
-    async getIndexesFor(node: NodeStruct): Promise<[UniqueBTree<K>, any][]> {
+    async getIndexesFor(node: NodeStruct): Promise<[UniqueBTree, any][]> {
         let propertyValue = await this.getValueOfNode(node)
+
         let belongsToIndex = propertyValue !== undefined
         if(!belongsToIndex) {
             return []
         } else {
-            let valueIndex = await this.get(propertyValue) as UniqueBTree<K>
+            let valueIndexID = await this.get(propertyValue) as number
+            let valueIndex = await this.txState.index.getOrInstantiate(valueIndexID) as UniqueBTree
             let valueIndexes = await valueIndex.getIndexesFor(node)
             // node isn't added to this index, because it only holds the uniqueBtree
             return valueIndexes
         }
     }
 
-    /**
-     * Do not call this function before checking if the node should belong to this index
-     */
     async prepareIndexes(node: NodeStruct): Promise<void> {
         let propertyValue = await this.getValueOfNode(node)
 
         if(propertyValue === undefined) return // node doesn't belong to this index
-        let index = await this.get(propertyValue)
-
-        if(!index) {
+        let indexID = await this.get(propertyValue)
+        if(!indexID) {
             let emptyLeafNode = await EmptyLeaf(this.txState)
-            let id = await this.txState.index.allocateID()
-            index = new UniqueBTree<K>(this.txState, id, this.uniquePropertyPath, emptyLeafNode.id, 0, [], this.maxNodeSize)
-            await this.set(propertyValue, index)
+            indexID = await this.txState.index.allocateID()
+            let index = new UniqueBTree(this.txState, indexID, this.uniquePropertyPath, emptyLeafNode.id, 0, [], this.maxNodeSize)
+            await this.txState.index.setInstance(indexID, index)
+            await this.set(propertyValue, index.id)
         }
 
+        let index = await this.txState.index.getOrInstantiate(indexID) as UniqueBTree
         await index.prepareIndexes(node)
     }
 }

@@ -3,10 +3,13 @@
 // import { Count, CountResponse } from './Count.js'
 import { CreateNode, CreateNodeResponse } from './CreateNode.js'
 import { DeleteNode, DeleteNodeResponse } from './DeleteNode.js'
+import { EnsureRootIndex, EnsureRootIndexResponse } from './EnsureRootIndex.js'
+import { IndexGet } from './IndexGet.js'
+import { IndexSet, IndexSetResponse } from './IndexSet'
 // import { DeleteMany, DeleteManyResponse } from './DeleteMany.js'
 // import { DeleteOne, DeleteOneResponse } from './DeleteOne.js'
-// import { FindMany, FindManyResponse, FindManyMore, FindManyMoreResponse } from './FindMany.js'
-// import { FindOne, FindOneResponse } from './FindOne.js'
+import { FindMany, FindManyResponse, FindManyMore, FindManyMoreResponse } from './FindMany.js'
+import { FindOne, FindOneResponse } from './FindOne.js'
 // import { InsertMany, InsertManyResponse } from './InsertMany.js'
 // import { InsertOne, InsertOneResponse } from './InsertOne.js'
 // import { StartTransaction, StartTransactionResponse } from './StartTransaction.js'
@@ -16,14 +19,17 @@ import { DeleteNode, DeleteNodeResponse } from './DeleteNode.js'
 export type Operation =
     | CreateNode
     | DeleteNode
+    | EnsureRootIndex
+    | IndexSet
+    | IndexGet
     // | AbortTransaction
     // | CommitTransaction
     // | StartTransaction
     // | Count
     // | DeleteOne
     // | DeleteMany
-    // | FindOne
-    // | FindMany
+    | FindOne
+    | FindMany
     // | InsertOne
     // | InsertMany
     // | UpdateOne
@@ -36,14 +42,17 @@ export type RequestOperation = Operation & { requestID: string }
 export type OperationResponse =
     | CreateNodeResponse
     | DeleteNodeResponse
+    | EnsureRootIndexResponse
+    | IndexSetResponse
+    | IndexGet
     // | AbortTransactionResponse
     // | CommitTransactionResponse
     // | StartTransactionResponse
     // | CountResponse
     // | DeleteOneResponse
     // | DeleteManyResponse
-    // | FindOneResponse
-    // | FindManyResponse
+    | FindOneResponse
+    | FindManyResponse
     // | FindManyMoreResponse
     // | InsertOneResponse
     // | InsertManyResponse

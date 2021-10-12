@@ -27,11 +27,15 @@ export function LogSetPowerData(logStore: InMemoryLogStore, command: SetPowerOfD
     }
 
     if(data === null) {
-        pow.freeIDs.add(id)
-        pow.usedIDs.delete(id)
+        pow.freed.add(id)
+        pow.used.delete(id)
+        pow.mock.freeIDs.add(id)
+        pow.mock.usedIDs.delete(id)
     } else {
-        pow.freeIDs.delete(id)
-        pow.usedIDs.delete(id)
+        pow.used.add(id)
+        pow.freed.delete(id)
+        pow.mock.usedIDs.delete(id)
+        pow.mock.freeIDs.delete(id)
     }
     pow.items.set(id, logStore.server.adn.serialize(data))
 }

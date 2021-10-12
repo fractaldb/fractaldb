@@ -46,8 +46,6 @@ describe ('can use a property index', async () => {
         name: 'John',
         age: 30
     })
-
-    console.log(propertyIndex.BTree.get('person')?.BTree.get('1'))
 })
 
 await run()

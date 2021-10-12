@@ -2,7 +2,6 @@
 
 export enum DataTypes {
     EOF = '',
-    UNDEFINED = '',
     NULLBYTE = '\x00',
     OBJECT = '\x01',
     EXTENSION = '\x02',
@@ -14,7 +13,8 @@ export enum DataTypes {
     SET = '\x08',
     NULL = '\x09',
     ARRAY = '\x0a',
-    ESCAPECHAR = '\x0b'
+    ESCAPECHAR = '\x0b',
+    UNDEFINED = '\x0c'
 }
 
 export type DataTypeKeys = keyof typeof DataTypes
@@ -30,6 +30,7 @@ export type Token = ObjectToken
     | TrueToken
     | NullToken
     | ArrayToken
+    | UndefinedToken
 
 export type ValueToken =
     | StringToken
@@ -82,4 +83,8 @@ export type TrueToken = {
 
 export type ArrayToken = {
     type: 'ARRAY'
+}
+
+export type UndefinedToken = {
+    type: 'UNDEFINED'
 }

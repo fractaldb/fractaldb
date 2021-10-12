@@ -1,4 +1,4 @@
-import { BNodeInternalData, BNodeLeafData, BNodeTypes, BNodeUnionData, IndexDataUnion, IndexTypes, NodeData, PropertyIndexData, PropertyMapData, UniqueIndexData, PropertyMapValue, ValueData, ValueTypes } from '../../structures/Subcollection.js'
+import { BNodeInternalData, BNodeLeafData, BNodeUnionData, IndexDataUnion, NodeData, PropertyIndexData, PropertyMapData, UniqueIndexData, PropertyMapValue, ValueData } from '../../structures/Subcollection.js'
 import { CreateNodeResponse } from '@fractaldb/shared/operations/CreateNode.js'
 import Transaction from './Transaction.js'
 import TransactionSubcollection from './TransactionSubcollection.js'
@@ -7,11 +7,13 @@ import { CollectionOpts } from '../../interfaces/Options.js'
 import MockCollection from '../mock/MockCollection.js'
 import { Deinstantiator, TransactionInstantiableSubcollection } from './TransactionInstantiableSubcollection.js'
 import { BNode, BNodeInternal } from '@fractaldb/indexing-system/BTreeNode.js'
-import BTree from '@fractaldb/indexing-system/BTree.js'
+import BTree, { EmptyLeaf } from '@fractaldb/indexing-system/BTree.js'
 import { PropertyMap } from '@fractaldb/indexing-system/indexes/PropertyMap.js'
 import { PropertyBTree } from '@fractaldb/indexing-system/indexes/PropertyBTree.js'
 import { UniqueBTree } from '@fractaldb/indexing-system/indexes/UniqueBTree.js'
 import { DeleteNodeResponse } from '@fractaldb/shared/operations/DeleteNode.js'
+import { BNodeTypes, IndexTypes, ValueTypes } from '@fractaldb/shared/structs/DataTypes.js'
+import { AddRootIndex, Commands, LogCommand, RemoveRootIndex } from '../../logcommands/commands.js'
 /**
  * transaction log contains all the updates for nodes
  * a node's value needs to get updated,
@@ -44,7 +46,24 @@ export default class TransactionCollection implements CollectionInterface {
     tx: Transaction
     opts: CollectionOpts
     mock: MockCollection
-    rootIndexes: number[] = [] // ids of RootIndexes
+    protected addedRootIndexes: Set<number> = new Set()
+    protected removedRootIndexes: Set<number> = new Set()
+
+    /**
+     * Returns an array of IDs of root indexes
+     */
+    async getRootIndexes(): Promise<number[]> {
+        let indexes = new Set(this.mock.rootIndexes)
+        // remove the removed root indexes from the set
+        for(let index of this.removedRootIndexes) {
+            indexes.delete(index)
+        }
+        // add the added root indexes to the set
+        for(let index of this.addedRootIndexes) {
+            indexes.add(index)
+        }
+        return Array.from(indexes)
+    }
 
     bnode: TransactionInstantiableSubcollection<BNode<any, any>, BNodeUnionData<any>>
     index: TransactionInstantiableSubcollection<BTree<any, any> & Deinstantiator<IndexDataUnion>, IndexDataUnion>
@@ -86,17 +105,15 @@ export default class TransactionCollection implements CollectionInterface {
         this.value = new TransactionSubcollection(this.tx, {...opts, subcollection: 'value'}, mock.value)
     }
 
-    getWrites() {
-        let writes = []
-        writes.push(...this.bnode.getWrites())
-        writes.push(...this.index.getWrites())
-        writes.push(...this.node.getWrites())
-        writes.push(...this.value.getWrites())
+    async getWrites(): Promise<LogCommand[]> {
+        let writes = [] as LogCommand[]
+        writes.push(...await this.bnode.getWrites())
+        writes.push(...await this.index.getWrites())
+        writes.push(...await this.node.getWrites())
+        writes.push(...await this.value.getWrites())
+        writes.push(...[...this.addedRootIndexes].map(indexID => [Commands.AddRootIndex, this.opts.database, this.opts.collection, indexID] as AddRootIndex))
+        writes.push(...[...this.removedRootIndexes].map(indexID => [Commands.RemoveRootIndex, this.opts.database, this.opts.collection, indexID] as RemoveRootIndex))
         return writes
-    }
-
-    releaseResources() {
-        this.releaseLocks()
     }
 
     releaseLocks() {
@@ -106,6 +123,13 @@ export default class TransactionCollection implements CollectionInterface {
         this.value.releaseLocks()
     }
 
+    releaseUsedIDs() {
+        this.bnode.releaseUsedIDs()
+        this.index.releaseUsedIDs()
+        this.node.releaseUsedIDs()
+        this.value.releaseUsedIDs()
+    }
+
     /**
      * Create a node in the collection
      *
@@ -113,8 +137,6 @@ export default class TransactionCollection implements CollectionInterface {
      */
     async createNode(): Promise<CreateNodeResponse> {
         let id = await this.node.allocateID()
-
-        console.log(id)
 
         let propertyIndex = await this.createPropertyMap(id)
         let referenceIndex = await this.createPropertyMap(id)
@@ -132,8 +154,55 @@ export default class TransactionCollection implements CollectionInterface {
         return node
     }
 
+    async ensureRootIndex(type: IndexTypes.unique | IndexTypes.property, path: (string|number)[]) {
+        let rootIndexes = await this.getRootIndexes()
+        let id: number | undefined = undefined
+        let adn = this.tx.server.adn
+
+        for (let indexID of rootIndexes) {
+            let index = await this.index.getOrInstantiate(indexID) as RootIndex | null
+            if(!index) continue
+            switch(index.type) {
+                case IndexTypes.unique: {
+                    if (type === index.type && adn.serialize(index.propertyPath) === adn.serialize(path)) {
+                        id = indexID
+                        break
+                    }
+                }
+                case IndexTypes.property: {
+                    if (type === index.type && adn.serialize(index.propertyPath) === adn.serialize(path)) {
+                        id = indexID
+                        break
+                    }
+                }
+            }
+            if(id) break
+        }
+
+        if(!id) {
+            id = await this.index.allocateID()
+            switch(type) {
+                case IndexTypes.unique: {
+                    let bnode = await EmptyLeaf(this)
+                    let index = new UniqueBTree(this, id, path, bnode.id, 0, [])
+                    await this.index.setInstance(id, index)
+                    break
+                }
+                case IndexTypes.property: {
+                    let bnode = await EmptyLeaf(this)
+                    let index = new PropertyBTree(this, id, path, bnode.id, [], 0)
+                    await this.index.setInstance(id, index)
+                    break
+                }
+            }
+            this.addedRootIndexes.add(id)
+        }
+
+        return id
+    }
+
     async createPropertyMap(node: number): Promise<PropertyMapIndex> {
-        let bnode = await this.createLeafBNode()
+        let bnode = await EmptyLeaf(this)
         let index: PropertyMapIndex = {
             id: await this.index.allocateID(),
             type: IndexTypes.propertyMap,
@@ -141,25 +210,11 @@ export default class TransactionCollection implements CollectionInterface {
             node: node
         }
 
-        let value: PropertyMapData = [index.type, index.root, index.node, 0]
+        let value: PropertyMapData = [index.type, index.root, [[node]], 0]
 
         await this.index.setActual(index.id, value)
 
         return index
-    }
-
-    /**
-     * Create an empty leaf bnode in the collection
-     */
-    async createLeafBNode(): Promise<{ id: number }> {
-        let id = await this.bnode.allocateID()
-        let value: BNodeLeafData<PropertyMapValue> = [BNodeTypes.Leaf, [], []]
-
-        await this.bnode.setActual(id, value)
-
-        return {
-            id
-        }
     }
 
     /*
@@ -218,7 +273,6 @@ export default class TransactionCollection implements CollectionInterface {
         if(!value) {
             throw new Error(`Value of ${id} does not exist. This should never happen`)
         }
-
         await this.deleteNodeBNode(value[1])
 
         await power.set(record[1], null)
@@ -342,10 +396,10 @@ export default class TransactionCollection implements CollectionInterface {
             throw new Error(`Node ${id} for edge's pointer does not exist`)
         }
         if(keypath.length === 0) {
-            let referenceIndex = await coll.index.getOrInstantiate(node.references) as PropertyMap<any>
+            let referenceIndex = await coll.index.getOrInstantiate(node.references) as PropertyMap
             await referenceIndex.delete(edgeid)
         } else {
-            let lastobj = await coll.index.getOrInstantiate(node.properties) as PropertyMap<any>
+            let lastobj = await coll.index.getOrInstantiate(node.properties) as PropertyMap
             for(let key of keypath) {
                 let v = await lastobj.get(key) as PropertyMapValue
                 if(v[0] !== ValueTypes.index) {
@@ -383,7 +437,7 @@ export default class TransactionCollection implements CollectionInterface {
 
         let [propertyindexid] = value
 
-        let propertyindex = await this.index.getOrInstantiate(propertyindexid) as PropertyMap<any>
+        let propertyindex = await this.index.getOrInstantiate(propertyindexid) as PropertyMap
         let [, fromid] = await propertyindex.get('from') as PropertyMapValue
         let [, toid] = await propertyindex.get('to') as PropertyMapValue
 

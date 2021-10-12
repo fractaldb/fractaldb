@@ -1,28 +1,30 @@
 import { FileHandle, open } from 'fs/promises'
 import { FractalServer } from '../../database/Server.js'
 import { Commands, LogCommand } from '../../logcommands/commands.js'
-import AssertUnreachable from '../../utils/AssertUnreachable.js'
-import InMemoryLogStoreCollection from './InMemoryLogStoreCollection.js'
 import InMemoryLogStoreDatabase from './InMemoryLogStoreDatabase.js'
-import InMemoryLogStoreSubcollection from './InMemoryLogStoreSubcollection.js'
 import crc32 from 'crc-32'
 import LayerInterface from '../../interfaces/LayerInterface.js'
 import { LogSetSubcollectionData } from './commands/LogSetSubcollectionData.js'
 import { LogSetPowerData } from './commands/LogSetPowerData.js'
-import { LogInitialisePower } from './commands/LogInitialisePower.js'
-import { LogInitialiseSubcollection } from './commands/LogInitialiseSubcollection.js'
 import { LogIncrementPower } from './commands/LogIncrementPower.js'
 import { LogIncrementSubcollection } from './commands/LogIncrementSubcollection.js'
+import { LogStatuses } from '../../database/PersistenceEngine.js'
+import { RemoveRootIndexCommand } from './commands/LogRemoveRootIndex.js'
+import { AddRootIndexCommand } from './commands/LogAddRootIndex.js'
+import { LogDeleteDatabase } from './commands/LogDeleteDatabase.js'
+import { LogDeleteCollection } from './commands/LogDeleteCollection.js'
 
 export default class InMemoryLogStore implements LayerInterface {
     number: number
     path: string
     fileHandle: FileHandle | null = null
+    handlePromise: Promise<FileHandle> | null = null
+    status: LogStatuses
 
     newer?: InMemoryLogStore
     older?: InMemoryLogStore
     txCount = 0
-    maxTxCount = 10
+    maxTxCount = 250
     server: FractalServer
     databases: Map<string, InMemoryLogStoreDatabase | null> = new Map()
 
@@ -30,11 +32,14 @@ export default class InMemoryLogStore implements LayerInterface {
         this.server = server
         this.number = number
         this.path = this.server.storageEngine.logEngine.getLogPath(number)
+        this.status = LogStatuses.UNPERSISTED
     }
 
     async getHandle(){
+        if(this.handlePromise) await this.handlePromise
         if(this.fileHandle) return this.fileHandle
-        this.fileHandle = await open(this.path, 'a+')
+        this.handlePromise = open(this.path, 'a+')
+        this.fileHandle = await this.handlePromise
         return this.fileHandle
     }
 
@@ -55,7 +60,7 @@ export default class InMemoryLogStore implements LayerInterface {
         return this.txCount >= this.maxTxCount
     }
 
-    async applyTxCommands(commands: LogCommand[]){
+    async writeCommands(commands: LogCommand[]){
         let adn = this.server.adn
         let serialized = Buffer.from(adn.serialize(commands))
         let length = Buffer.alloc(4)
@@ -69,23 +74,27 @@ export default class InMemoryLogStore implements LayerInterface {
         // write log entry before applying commands to ensure integrity
         await this.write(logEntry)
 
-        for (const command of commands) {
-            // apply each command to the log store
+        // apply commands to in-memory log store
+        this.applyTxCommands(commands)
+    }
+
+    applyTxCommands(commands: LogCommand[]){
+        for(const command of commands){
             this.applyTxCommand(command)
         }
     }
 
     private applyTxCommand(command: LogCommand){
         switch (command[0]) {
+            case Commands.AddRootIndex: return AddRootIndexCommand(this, command)
+            case Commands.RemoveRootIndex: return RemoveRootIndexCommand(this, command)
             case Commands.IncrementSubcollectionHighestID: return LogIncrementSubcollection(this, command)
             case Commands.IncrementPowerHighestID: return LogIncrementPower(this, command)
-            case Commands.InitialiseSubcollection: return LogInitialiseSubcollection(this, command)
-            case Commands.InitialisePower: return LogInitialisePower(this, command)
             case Commands.SetPowerOfData: return LogSetPowerData(this, command)
             case Commands.SetSubcollectionData: return LogSetSubcollectionData(this, command)
+            case Commands.DeleteDatabase: return LogDeleteDatabase(this, command)
+            case Commands.DeleteCollection: return LogDeleteCollection(this, command)
         }
-
-        // return AssertUnreachable(command[0])
     }
 
 }

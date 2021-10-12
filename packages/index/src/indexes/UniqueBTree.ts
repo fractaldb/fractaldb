@@ -1,16 +1,20 @@
 import TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
-import { IndexDataUnion, IndexTypes, PropertyMapValue, UniqueIndexData, ValueTypes } from '@fractaldb/fractal-server/structures/Subcollection.js'
+import { IndexDataUnion, PropertyMapValue, UniqueIndexData } from '@fractaldb/fractal-server/structures/Subcollection.js'
+import { IndexTypes, ValueTypes } from '@fractaldb/shared/structs/DataTypes.js'
 import { NodeStruct } from '@fractaldb/shared/structs/NodeStruct.js'
 import BTree from '../BTree.js'
 import { PropertyBTree } from './PropertyBTree.js'
 import { PropertyMap } from './PropertyMap.js'
 
 // value will always be a node's number in uniqueBTrees
-export class UniqueBTree<K> extends BTree<K, number> {
-    propertyPath: string[]
+
+type K = string | number
+export class UniqueBTree extends BTree<K, number> {
+    readonly type = IndexTypes.unique
+    propertyPath: (string|number)[]
     subindexes: number[] // ids of UniqueBTrees or PropertyIndexes
 
-    constructor(txState: TransactionCollection, id: number, propertyPath: string[], root: number, size: number, subindexes: number[], maxNodeSize?: number, ) {
+    constructor(txState: TransactionCollection, id: number, propertyPath: (string|number)[], root: number, size: number, subindexes: number[], maxNodeSize?: number, ) {
         super(txState, id, root, size, maxNodeSize)
         this.subindexes = subindexes
         this.propertyPath = propertyPath
@@ -22,14 +26,14 @@ export class UniqueBTree<K> extends BTree<K, number> {
         return [IndexTypes.unique, this.root, this.size, path, subindexes] as UniqueIndexData
     }
 
-    async getIndexesFor(node: NodeStruct): Promise<[UniqueBTree<K>, any][]> {
+    async getIndexesFor(node: NodeStruct): Promise<[UniqueBTree, any][]> {
         let value = await this.getValueOfNode(node)
 
         if(value === undefined) return []
 
         let subindexes = []
         for (let subindexid of this.subindexes) {
-            let subindex = await this.txState.index.getOrInstantiate(subindexid) as unknown as PropertyBTree<any, any>
+            let subindex = await this.txState.index.getOrInstantiate(subindexid) as unknown as PropertyBTree
             subindexes.push(...await subindex.getIndexesFor(node))
         }
         return [[this, value], ...subindexes]
@@ -41,17 +45,17 @@ export class UniqueBTree<K> extends BTree<K, number> {
             return node.id
         }
 
-        let index = await this.txState.index.getOrInstantiate(node.properties) as PropertyMap<K>
+        let index = await this.txState.index.getOrInstantiate(node.properties) as PropertyMap
 
         let i = 0
         while(i < this.propertyPath.length) {
-            let value = await index.get(this.propertyPath[i] as unknown as K) as PropertyMapValue
+            let value = await index.get(this.propertyPath[i]) as PropertyMapValue
 
             if(value === undefined) return undefined // this path doesn't exist, return undefined early
             let [type, id] = value
             switch (type) {
                 case ValueTypes.index: {
-                    index = await this.txState.index.getOrInstantiate(id) as PropertyMap<K>
+                    index = await this.txState.index.getOrInstantiate(id) as PropertyMap
                     if(i === this.propertyPath.length - 1) {
                         return index
                     }
@@ -60,6 +64,13 @@ export class UniqueBTree<K> extends BTree<K, number> {
                 case ValueTypes.value: {
                     if(i === this.propertyPath.length - 1) {
                         return await this.txState.value.getActual(id)
+                    }
+                    return undefined
+                }
+                case ValueTypes.node: {
+                    if(i === this.propertyPath.length - 1) {
+                        let nodepath = await this.txState.value.getActual(id)
+                        // nodepath should turn into an ADN string so we can set it in the BTree
                     }
                     return undefined
                 }
@@ -77,7 +88,7 @@ export class UniqueBTree<K> extends BTree<K, number> {
         if(belongsToIndex) {
             let i = 0
             while(i < this.subindexes.length) {
-                let subindex = await this.txState.index.getOrInstantiate(this.subindexes[i]) as PropertyBTree<any, any>
+                let subindex = await this.txState.index.getOrInstantiate(this.subindexes[i]) as PropertyBTree
                 await subindex.prepareIndexes(node)
             }
         }

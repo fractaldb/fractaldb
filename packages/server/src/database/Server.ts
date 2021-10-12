@@ -1,6 +1,6 @@
 import net, { Server, Socket } from 'net'
 import EventEmitter from 'events'
-import ClientConnection from './ClientConnection.js'
+import ClientConnection, { uuidV4 } from './ClientConnection.js'
 import Transaction from '../layers/transaction/Transaction.js'
 import { ADN, ADNExtension } from '@fractaldb/adn'
 import { EntityIDExtension } from '@fractaldb/adn/EntityID.js'
@@ -41,7 +41,7 @@ export class FractalServer extends EventEmitter {
 
         this.connections = new Set()
 
-        config.ADNextensions.push(new EntityIDExtension('\x01'))
+        // config.ADNextensions.push(new EntityIDExtension('\x01'))
 
         this.adn = new ADN(config.ADNextensions)
         this.server = net.createServer()
@@ -59,7 +59,7 @@ export class FractalServer extends EventEmitter {
         await this.persistenceEngine.initialize()
     }
 
-    beginTx(txID: string){
+    beginTx(txID: string = uuidV4().toString('hex')){
         const tx = new Transaction(this, txID)
         this.transactions.set(txID, tx)
         return tx

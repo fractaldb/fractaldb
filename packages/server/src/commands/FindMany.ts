@@ -22,32 +22,31 @@ export function turnPathStringToPath(path: string): (number|string)[] {
     })
 }
 
+/**
+ * let keys = Object.keys(op.query)
+ * let bestindex = null
+ * let i = 0
+ * while (i < keys.length)
+ *    let index be rootIndexes.find(index => index.key === keys[i])
+ *    if (index)
+ *      bestindex = index
+ *   i++
+ * if (bestindex)
+ *  return bestindex.forRange(op.query[bestindex.key], node => {
+ *      if(node.hasAllValues(op.query))
+ *         return node
+ *       })
+ *   })
+ * else
+ *  return collection.nodes.find(node => node.hasAllValues(op.query))
+ * }
+ *
+ */
 export async function FindManyCommand (op: FindMany, tx: Transaction): Promise<FindManyResponse> {
 
     let db = tx.getOrCreateDatabase(op.database)
     let collection = db.getOrCreateCollection(op.collection)
 
-    // algorithm to find an index based on the query
-    /**
-     * let keys = Object.keys(op.query)
-     * let bestindex = null
-     * let i = 0
-     * while (i < keys.length)
-     *    let index be rootIndexes.find(index => index.key === keys[i])
-     *    if (index)
-     *      bestindex = index
-     *   i++
-     * if (bestindex)
-     *  return bestindex.forRange(op.query[bestindex.key], node => {
-     *      if(node.hasAllValues(op.query))
-     *         return node
-     *       })
-     *   })
-     * else
-     *  return collection.nodes.find(node => node.hasAllValues(op.query))
-     * }
-     *
-     */
     let query = Object.entries(op.query ?? {}) as [string, any][]
     let bestindex: RootIndex | null = null
     let rootIndexesIDs = await collection.getRootIndexes()

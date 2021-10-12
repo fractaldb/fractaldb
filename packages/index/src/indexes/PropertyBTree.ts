@@ -85,7 +85,7 @@ export class PropertyBTree extends BTree <K, V> {
         if(!belongsToIndex) {
             return []
         } else {
-            let valueIndexID = await this.get(propertyValue) as number
+            let valueIndexID = await this.get(propertyValue) as unknown as number
             let valueIndex = await this.txState.index.getOrInstantiate(valueIndexID) as UniqueBTree
             let valueIndexes = await valueIndex.getIndexesFor(node)
             // node isn't added to this index, because it only holds the uniqueBtree
@@ -97,7 +97,7 @@ export class PropertyBTree extends BTree <K, V> {
         let propertyValue = await this.getValueOfNode(node)
 
         if(propertyValue === undefined) return // node doesn't belong to this index
-        let indexID = await this.get(propertyValue)
+        let indexID = await this.get(propertyValue) as number
         if(!indexID) {
             let emptyLeafNode = await EmptyLeaf(this.txState)
             indexID = await this.txState.index.allocateID()

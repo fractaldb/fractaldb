@@ -1,10 +1,10 @@
-import { RootIndex } from '@fractaldb/fractal-server/interfaces/CollectionInterface.js'
-import TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
-import { IndexDataUnion, PropertyMapValue } from '@fractaldb/fractal-server/structures/Subcollection.js'
+import type { RootIndex } from '@fractaldb/fractal-server/interfaces/CollectionInterface.js'
+import type TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
+import type { IndexDataUnion, PropertyMapValue } from '@fractaldb/fractal-server/structures/Subcollection.js'
 import { IndexTypes } from '@fractaldb/shared/structs/DataTypes.js'
 import { NodeStruct } from '@fractaldb/shared/structs/NodeStruct.js'
 import BTree, { Comparator } from '../BTree.js'
-import { UniqueBTree } from './UniqueBTree.js'
+import type { UniqueBTree } from './UniqueBTree.js'
 
 // let edge = {
 

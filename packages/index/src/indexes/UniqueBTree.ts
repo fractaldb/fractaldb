@@ -1,10 +1,10 @@
-import TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
-import { IndexDataUnion, PropertyMapValue, UniqueIndexData } from '@fractaldb/fractal-server/structures/Subcollection.js'
+import type TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
+import type { PropertyMapValue, UniqueIndexData } from '@fractaldb/fractal-server/structures/Subcollection.js'
 import { IndexTypes, ValueTypes } from '@fractaldb/shared/structs/DataTypes.js'
-import { NodeStruct } from '@fractaldb/shared/structs/NodeStruct.js'
+import type{ NodeStruct } from '@fractaldb/shared/structs/NodeStruct.js'
 import BTree from '../BTree.js'
-import { PropertyBTree } from './PropertyBTree.js'
-import { PropertyMap } from './PropertyMap.js'
+import type { PropertyBTree } from './PropertyBTree.js'
+import type { PropertyMap } from './PropertyMap.js'
 
 // value will always be a node's number in uniqueBTrees
 

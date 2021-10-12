@@ -3,7 +3,7 @@
 // A B+ tree consists of a root, internal nodes and leaves.
 // The root may be either a leaf or a node with two or more children
 
-import TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
+import type TransactionCollection from '@fractaldb/fractal-server/layers/transaction/TransactionCollection.js'
 import { BNode, BNodeInternal, EditRangeResult } from './BTreeNode.js'
 
 function iterator<T>(next: () => Promise<IteratorResult<T>> = (async () => ({ done:true, value:undefined }))): IterableIterator<T> {

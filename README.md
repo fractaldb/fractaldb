@@ -32,4 +32,8 @@ lerna run watch --parallel
 lerna link
 lerna run compile
 lerna publish --force-publish
+
+or
+
+lerna publish -- --access public
 ```

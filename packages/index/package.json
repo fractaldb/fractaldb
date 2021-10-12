@@ -35,5 +35,5 @@
     "@framework-tools/catchit": "^1.0.11",
     "ts-node": "^10.0.0"
   },
-  "gitHead": "0607a4ea8ef92688d1c8af3daf7f2300b41edbbe"
+  "gitHead": "fe32ebeb0df21ab4ee5a832baaad69fe234d51e2"
 }

@@ -6,7 +6,7 @@ export interface IndexGet extends BaseOperation {
     database: string
     collection: string
     index: number
-    key: string
+    key: string | number
 }
 
 export interface IndexGetResponse {

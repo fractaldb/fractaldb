@@ -6,7 +6,7 @@ export interface IndexSet extends BaseOperation {
     database: string
     collection: string
     index: number
-    key: string
+    key: string | number
     data: IndexOperation
 }
 

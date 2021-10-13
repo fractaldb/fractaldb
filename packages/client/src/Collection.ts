@@ -72,6 +72,15 @@ export default class Collection {
         })
     }
 
+    async findOne(query: Object) {
+        return await this.sendMessage({
+            op: 'FindOne',
+            collection: this.name,
+            database: this.database.name,
+            query
+        })
+    }
+
     async indexGet(index: number, key: string): Promise<IndexGetResponse> {
         return await this.sendMessage({
             op: 'IndexGet',

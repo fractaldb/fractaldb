@@ -53,6 +53,20 @@ export async function FindManyCommand (op: FindMany, tx: Transaction): Promise<F
     // these would be the root indexes starting out
     let subindexIDs = rootIndexesIDs
 
+    if(query[0][0] === 'id') {
+        // if the query is just an id, we can just return the node
+        let node = await collection.getNode(query[0][1])
+        if(node) {
+            return {
+                nodes: [node]
+            }
+        } else {
+            return {
+                nodes: []
+            }
+        }
+    }
+
     let adn = tx.server.adn
     let i = 0
     while (i < query.length) {

@@ -60,7 +60,7 @@ export default class Collection {
         })
     }
 
-    async findMany(query: Object) {
+    async findMany(query?: Object) {
         return await this.sendMessage({
             op: 'FindMany',
             limit: 10,
@@ -72,7 +72,7 @@ export default class Collection {
         })
     }
 
-    async findOne(query: Object) {
+    async findOne(query?: Object) {
         return await this.sendMessage({
             op: 'FindOne',
             collection: this.name,

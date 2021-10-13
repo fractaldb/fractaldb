@@ -81,7 +81,7 @@ export default class Collection {
         })
     }
 
-    async indexGet(index: number, key: string): Promise<IndexGetResponse> {
+    async indexGet(index: number, key: string | number): Promise<IndexGetResponse> {
         return await this.sendMessage({
             op: 'IndexGet',
             database: this.database.name,
@@ -91,7 +91,7 @@ export default class Collection {
         })
     }
 
-    async indexSet(index: number, key: string, data: IndexOperation){
+    async indexSet(index: number, key: string | number, data: IndexOperation){
         return await this.sendMessage({
             op: 'IndexSet',
             database: this.database.name,

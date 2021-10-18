@@ -1,6 +1,5 @@
 import Database from './Database.js'
 import Cursor from './Cursor.js'
-import FindOperation, { FindCommand } from './operations/FindOperation.js'
 import { FractalNamespace, uuidV4 } from './utils.js'
 import { UpdateOperation } from '@fractaldb/shared/utils/JSONPatch.js'
 import { Operation, OperationResponse } from '@fractaldb/shared/operations/index.js'
@@ -117,19 +116,6 @@ export default class Collection {
         })
 
         return
-    }
-
-    find(query: any, options: FindCommand = {}) {
-        let command = {
-            query,
-            limit: options.limit ?? 0,
-            skip: options.skip ?? 0,
-            sort: options.sort ?? 1
-        }
-
-        // let cursor = this.database.client.cursor(new FindOperation(this.namespace, command, {}))
-
-        // return cursor
     }
 
     // async findOne(query: any = {}): Promise<FindOneResponse> {

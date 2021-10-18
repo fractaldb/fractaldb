@@ -78,7 +78,7 @@ export class PropertyBTree extends BTree <K, V> {
      * - else
      * - return [[this, value], ...value.getIndexesFor(doc)]
      */
-    async getIndexesFor(node: NodeStruct): Promise<[UniqueBTree, any][]> {
+    async getIndexesFor(node: NodeStruct): Promise<[UniqueBTree, any, NodeStruct][]> {
         let propertyValue = await this.getValueOfNode(node)
 
         let belongsToIndex = propertyValue !== undefined

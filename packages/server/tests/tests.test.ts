@@ -56,11 +56,11 @@ describe('indexes', () => {
         await col.deleteNode(node.id)
     })
 
-    test('can findMany using root index', async () => {
+    test('can findMany using unique root index', async () => {
         let node = await col.createNode()
         await col.indexSet(node.properties, 'email', [ValueTypes.value, 'abc@test.com'])
         let result = await col.findMany({
-            organisation: 'abc'
+            email: 'abc@test.com'
         })
         await col.deleteNode(node.id)
         expect(result.nodes.find((n: NodeStruct) => n.id === node.id)?.id).toBe(node.id)

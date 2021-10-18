@@ -52,7 +52,6 @@ export async function FindManyCommand (op: FindMany, tx: Transaction): Promise<F
     let rootIndexesIDs = await collection.getRootIndexes()
     // these would be the root indexes starting out
     let subindexIDs = rootIndexesIDs
-
     if(query[0][0] === 'id') {
         // if the query is just an id, we can just return the node
         let node = await collection.getNode(query[0][1])
@@ -75,7 +74,6 @@ export async function FindManyCommand (op: FindMany, tx: Transaction): Promise<F
         let value = query[i][1] // get the value
 
         let index = subindexes.find(index => adn.serialize(propertyPath) === adn.serialize(index.propertyPath))
-
         if(index) {
             bestindex = index
             let uniqueIndex = index instanceof UniqueBTree ? index : null
@@ -118,6 +116,7 @@ export async function FindManyCommand (op: FindMany, tx: Transaction): Promise<F
         } else if (bestindex instanceof UniqueBTree) { // this will always return one node
             let nodeID = await bestindex.get(value)
 
+            console.log('nodeid', nodeID)
             if (nodeID) {
                 let node = await collection.getNode(nodeID) as NodeStruct
                 if(await nodeHasAllValues(collection, node, op.query)) {

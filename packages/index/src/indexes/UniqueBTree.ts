@@ -26,7 +26,7 @@ export class UniqueBTree extends BTree<K, number> {
         return [IndexTypes.unique, this.root, this.size, path, subindexes] as UniqueIndexData
     }
 
-    async getIndexesFor(node: NodeStruct): Promise<[UniqueBTree, any][]> {
+    async getIndexesFor(node: NodeStruct): Promise<[UniqueBTree, any, NodeStruct][]> {
         let value = await this.getValueOfNode(node)
 
         if(value === undefined) return []
@@ -36,7 +36,7 @@ export class UniqueBTree extends BTree<K, number> {
             let subindex = await this.txState.index.getOrInstantiate(subindexid) as unknown as PropertyBTree
             subindexes.push(...await subindex.getIndexesFor(node))
         }
-        return [[this, value], ...subindexes]
+        return [[this, value, node], ...subindexes]
     }
 
     async getValueOfNode(node: NodeStruct): Promise<any | undefined> {

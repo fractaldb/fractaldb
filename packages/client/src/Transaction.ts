@@ -1,4 +1,5 @@
 
-export default class Transaction {
-    
-}
+// export default class Transaction {
+//     id: string;
+// }
+

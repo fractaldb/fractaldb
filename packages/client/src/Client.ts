@@ -3,7 +3,6 @@ import EventEmitter from 'events'
 import { Operation } from '@fractaldb/shared/operations/index.js'
 import { splitBufferStream } from '@fractaldb/shared/utils/buffer.js'
 import Database from './Database.js'
-import { ClientSession } from './Session.js'
 import { ADN, ADNExtension } from '@fractaldb/adn'
 import { EntityIDExtension } from '@fractaldb/adn/EntityID.js'
 
@@ -15,7 +14,6 @@ type FractalClientOptions = {
 
 export class FractalClient extends EventEmitter {
     socket: Socket
-    state: FractalClientState = new FractalClientState()
     adn: ADN
 
     constructor({ port, host, ADNExtensions }: FractalClientOptions = { port: 24000, host: 'localhost', ADNExtensions: []}){
@@ -35,16 +33,6 @@ export class FractalClient extends EventEmitter {
         this.socket.on('data', bufferStream)
     }
 
-    startSession(){
-        // let session = new ClientSession(this, this.state.sessionPool, {})
-
-        // session.once('ended', () => {
-        //     this.state.sessions.delete(session)
-        // })
-
-        // this.state
-    }
-
     close() {
         this.socket.destroy()
     }
@@ -56,14 +44,4 @@ export class FractalClient extends EventEmitter {
     cursor(operation: Operation){
         // return new Cursor(this, operation)
     }
-}
-
-
-class FractalClientState {
-    sessionPool: SessionPool = new SessionPool()
-    sessions: Map<string, ClientSession> = new Map()
-}
-
-export class SessionPool {
-
 }

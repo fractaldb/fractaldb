@@ -57,8 +57,8 @@ export class PropertyMap extends BTree<K, PropertyMapValue> {
      *  - for each index in shouldUpdate, call set on the index with the new value
      */
     async set(key: K, value: PropertyMapValue): Promise<boolean> {
-        let oldIndexes: [UniqueBTree, any][] = []
-        let newIndexes: [UniqueBTree, any][] = []
+        let oldIndexes: [UniqueBTree, any, NodeStruct][] = []
+        let newIndexes: [UniqueBTree, any, NodeStruct][] = []
         let rootIndexes: [RootIndex, NodeStruct][] = []
 
         for(let nodePath of this.nodes) {
@@ -94,13 +94,13 @@ export class PropertyMap extends BTree<K, PropertyMapValue> {
         for(let [index, keyValue] of shouldRemove) {
             await index.delete(keyValue)
         }
-        for(let [index, keyValue] of newIndexes) {
+        for(let [index, keyValue, node] of newIndexes) {
             if(!oldIndexes.find(i => i[0].id === index.id)) {
                 // if(index.type === IndexTypes.unique) {
                 //     // check if this index aleady has a value, throw an error if it isn't this node
                 //     let current = await index.get(keyValue)
                 //     if(this.nodes.includes(current)) {
-                await index.set(keyValue, keyValue)
+                await index.set(keyValue, node.id)
             }
         }
 

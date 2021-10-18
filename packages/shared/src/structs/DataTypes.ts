@@ -1,20 +1,20 @@
 
 export enum BNodeTypes {
-    Leaf = 0,
-    Internal = 1
+    Leaf = 1,
+    Internal = 2
 }
 
 export enum ValueTypes {
-    value = 0,
-    node = 1,
-    index = 2,
-    edge = 3
+    value = 1,
+    node = 2,
+    index = 3,
+    edge = 4
 }
 
 export enum IndexTypes {
-    propertyMap = 0,
-    unique = 1,
-    property = 2
+    propertyMap = 1,
+    unique = 2,
+    property = 3
 }
 
 export type FullNodePath = [database: string, collection: string, id: number]

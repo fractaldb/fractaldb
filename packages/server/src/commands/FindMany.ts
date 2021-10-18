@@ -116,7 +116,6 @@ export async function FindManyCommand (op: FindMany, tx: Transaction): Promise<F
         } else if (bestindex instanceof UniqueBTree) { // this will always return one node
             let nodeID = await bestindex.get(value)
 
-            console.log('nodeid', nodeID)
             if (nodeID) {
                 let node = await collection.getNode(nodeID) as NodeStruct
                 if(await nodeHasAllValues(collection, node, op.query)) {

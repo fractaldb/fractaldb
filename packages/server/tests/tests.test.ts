@@ -51,7 +51,7 @@ describe('locking system', () => {
 describe('indexes', () => {
     test('can create root indexes', async () => {
         let node = await col.createNode()
-        await col.indexSet(node.properties, 'organisation', [ValueTypes.value, 'acme co'])
+        await col.indexSet(node.properties, 'email', [ValueTypes.value, 'abc@xyz.com'])
         let { id } = await col.ensureRootIndex('unique', ['email'], false)
         await col.deleteNode(node.id)
     })
@@ -64,6 +64,15 @@ describe('indexes', () => {
         })
         await col.deleteNode(node.id)
         expect(result.nodes.find((n: NodeStruct) => n.id === node.id)?.id).toBe(node.id)
+    })
+
+    test('Node can have array values', async () => {
+        let node = await col.createNode()
+        await col.indexSet(node.properties, 'arr', [ValueTypes.value, ['abc', 'xyz']])
+        let { type, value } = await col.indexGet(node.properties, 'arr')
+        await col.deleteNode(node.id)
+        expect(value).toBe(['abc', 'xyz'])
+        expect(type).toBe(ValueTypes.value)
     })
 })
 

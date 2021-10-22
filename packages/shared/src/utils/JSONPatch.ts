@@ -1,4 +1,4 @@
-
+//prototype pollution vunerability
 
 interface UnsetOperation {
     op: 'unset'
@@ -23,16 +23,20 @@ interface MoveOperation {
     path: string
 }
 
-export type UpdateOperation = 
+export type UpdateOperation =
     | UnsetOperation
     | SetOperation
     | CopyOperation
     | MoveOperation
 
+let map = new Map()
+map.set
+map.get
+map.delete
 
 export function apply(doc: any, operation: UpdateOperation): any {
     switch(operation.op) {
-        case 'set': 
+        case 'set':
             return setOperation(doc, operation.path, operation.value)
         case 'copy':
             return copyOperation(doc, operation.from, operation.path)
@@ -138,7 +142,7 @@ export function unsetOperation(root: any, pathString: string) {
 
     delete parentObj[path]
 
-    return root 
+    return root
 }
 
 export function moveOperation(root: any, fromPath: string, toPath:string){
@@ -158,7 +162,7 @@ export function moveOperation(root: any, fromPath: string, toPath:string){
 
     toParent[toPathLast] = fromParent[fromPathLast]
     delete fromParent[fromPathLast]
-    
+
     return root
 }
 

@@ -1,10 +1,10 @@
-import { FractalClient } from './Client'
-import Collection from './Collection'
+import { FractalClient } from './Client.js'
+import Collection from './Collection.js'
 
 export default class Database {
     name: string
     client: FractalClient
-    
+
     constructor(name: string, client: FractalClient){
         this.name = name
         this.client = client

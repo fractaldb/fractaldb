@@ -1,0 +1,66 @@
+
+Definitions
+- ID information:
+    - HighestID: the highest ID number in the database, for a specific subcollection/power
+    - FreeIDs: the list of free IDs in the database, for a specific subcollection/power
+
+Mocks store the latest ID information, this is in memory and is not persisted, but is based on all of the log store commands mutations. It is initialised from the Disk's last known information once during startup
+
+Disk stores the last known disk's layer ID information. This is outdated by the number of non-persisted log stores
+- It is used when a log store is being persisted, for example
+    - The power's disk layer ID is 1
+    - the log store being persisted increments this value by 1
+    - the disk layer's information is persisted, and the new value becomes 2
+- The disk store id information is only read when:
+    - the mock layer is being initialised on startup
+    - a log store is being persisted
+
+When a tx deletes a collection/subcollection/power, then the mock layer is reset to starting values (without reading the disk, because while it may exist in there, the layer has been deleted)
+
+The mock layer allocates IDs
+- when a ID is needed by the tx DONE
+    - if there are free IDs, then
+        - let id be the first id
+        - remove id from the free IDs
+        - return id
+    - if there are no free IDs, then the highest ID is incremented and returned
+        - a command is applied in the latest log store to increment the highest ID
+        - that ID is added to the list of used IDs
+        - the ID is returned to the tx
+
+- when a delete (freeID) command is applied to the log layer DONE
+    - the log will note the ID that was freed
+    - the ID is added to the Mock's list of free IDs
+        - other transactions may now use this ID
+    - the ID is removed from the Mock's list of used IDs (just in case it is there)
+
+- when a set (useID) command is applied in the log layer DONE
+    - the log will note the ID that was used / removed from freeIDs too
+    - the ID will be removed from the UsedIDs and FreeIDs of the mocklayer
+
+managesIDLog: { DONE
+    increments: number // number of increments to apply to the highest ID on disk when persisting
+    freed: Set<number> // IDs that were freed in this log store
+    used: Set<number> // IDs that were used in this log store
+}
+
+mockLayer: { DONE
+    highestID: number // the highest ID in the mock layer
+    freeIDs: Set<number> // IDs that are free in the mock layer
+    usedIDs: Set<number> // IDs that are currently being used in the mock layer
+}
+
+disk: {
+    highestID: number // the highest ID in the disk layer
+    freeIDs: Set<number> // IDs that are free in the disk layer
+    // disk doesn't have usedIDs, because they are not managed here
+}
+
+startup process:
+- initialise all disk layers (store their ID information in memory)
+- initialise the mock layer, based on the disk layer information
+- while there are unpersisted log layers
+    - read the log layer's commands
+    - apply all commands (some of which will apply changes to the mock layer)
+- persist the log layers
+

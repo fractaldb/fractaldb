@@ -1,0 +1,72 @@
+
+
+Delete node cascade deletion
+- get power of and id
+- get data of node (property index id & references index id)
+- for each index id
+  - call delete on index
+- delete powerof value
+- delete node
+
+Delete property index cascade deletion
+- get power of and id
+- get data of property index (root, from)
+- call delete on root bnode
+- delete powerof value
+- delete property index
+
+Delete bnode cascade deletion
+- get power of and id
+- get type of bnode
+- if leaf
+  - get values of bnode
+  - foreach value
+    - switch value.type
+      - case propertyindex
+        - call delete on property index
+      - case edge
+        - call delete on edge
+      - case value
+        - call delete on value
+      - case node
+        - ignore
+- if internal bnode
+  - get children of bnode
+  - foreach child of children
+    - call delete on child
+- delete powerof value
+- delete bnode
+
+Delete edge cascade deletion
+- get power of and id
+- get date of edge (property index id & references index id)
+- DeleteRecursivePathOfEdge(propertyindex.get('from'), id)
+- DeleteRecursivePathOfEdge(propertyindex.get('to'), id)
+- for each index id
+  - call delete on index
+- delete powerof value
+- delete edge
+
+Delete value cascade deletion
+- get power of and id
+- delete powerof value
+- delete value
+
+DeleteRecursivePathOfEdge(path, id)
+  - let i = 1
+  - let lastobj = path[0] as gettersetter type
+  - while i < value.length
+    - lastobj = lastobj.get(value[i++])
+  - lastobj.delete(id)
+
+
+getIndex(id): Promise<Index>
+  - let index = this.instantiatedIndexes.get(id)
+  - if index
+    - return index
+  let indexData = await this.index.get(id)
+  - if indexData
+    - let index = new Index(indexData)
+    - this.instantiatedIndexes.set(id, index)
+    - return index
+  throw new Error('Index not found')

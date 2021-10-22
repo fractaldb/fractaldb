@@ -1,7 +1,7 @@
 {
-  "version": "0.0.3",
-  "useWorkspaces": true,
   "packages": [
     "packages/*"
-  ]
+  ],
+  "npmClient": "npm",
+  "version": "0.3.10"
 }

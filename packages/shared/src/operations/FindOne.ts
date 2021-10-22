@@ -1,25 +1,13 @@
-type internalID = number
-type entityID = string
-type EntityObj = {
-    entityID: entityID,
-    doc: JSONObject
-}
-type Entity = { internalID: internalID } & EntityObj
-type EntityMap = Map<internalID, EntityObj>
-type InsertedID = {
-    internalID: internalID,
-    entityID: entityID
-}
-
-import JSONObject from '../utils/JSONObject'
-import { BaseOperation } from './BaseOperation'
+import { NodeStruct } from '../structs/NodeStruct.js'
+import { BaseOperation } from './BaseOperation.js'
 
 export interface FindOne extends BaseOperation {
     op: 'FindOne'
-    query: JSONObject
-    projection: JSONObject
+    database: string
+    collection: string
+    query: any
 }
 
 export interface FindOneResponse {
-    entity: Entity | null
+    node: NodeStruct | null
 }

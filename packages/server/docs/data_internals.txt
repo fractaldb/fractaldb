@@ -1,0 +1,493 @@
+
+## Data Store Layers
+
+- TX state
+    - this keeps track of any local state changes of docs in transactions, and includes indexes too.
+    - Anything that can't be found in here searches the in-memory database next
+- in-memory log store []
+    - there are multiple in-memory log stores, one for each log rotation (full transaction log)
+    - keeps track of docs and indexes which haven't been persisted to disk yet, but have been persisted to transaction logs
+    - Anything that can't be found here searches the next most recent in-memory log-store if there is one and finally the LRU cache
+    - wrapper
+- LRU cache
+    - keeps in memory the representation of docs and indexes which are frequently accessed using a least-recently-used cache
+    - Anything that can't be found here searches the disk store, and adds the item to the LRU
+- disk store
+    - for any items that can't be found in the LRU cache, the disk is the final location to search for a node or index
+    - anything that can't be found here doesn't exist
+
+### Index store layers
+- TX state
+  - root indexes: contains any changed / edited / deleted indexes
+  - indexes: a map of ids to indexes
+  - nodes: a map of ids to nodes
+---
+
+criteria for full:
+- inMemory.txCount = inMemory.maxTx
+
+find a free log in-memory store to write to:
+- if there is a most recent free log store, use it
+- if the log store is full, link it with a new future log store and make that the most recent
+- if the data persistence engine is waiting, notify the data persistence engine to restart
+
+tx wants to:
+- find a free log in-memory store to write to
+- write to the log file first, then write to the in-memory log store
+- increment the log file tx count number by 1
+
+Persistence algorithm - PersistenceEngine.ts DONE
+- update status of in memory log store to persisting
+- write all in memory log store to disk
+- get the next most recent in memory log store and remove itself from the list
+
+Transaction commit method - Transaction.ts
+- if there is writes:
+    - find a free log in-memory store to write to
+    - get list of write commands that have been applied in the tranaction
+    - serialise all of the commands/transaction into a single string
+    - generate header with the following data:
+        - tx UUID
+        - length of serialised data
+        - crc32 checksum of serialised data
+    - header is a fixed length buffer/encoding of the above data
+    - write the serialised string to the transaction log for that in-memory log store
+    - apply the write commands to the in-memory log store
+    - unlock all resources
+    - return success to the client
+- if there is no writes:
+    - return success to the client
+
+Database startup process
+- general idea -> 1 file that keeps track of the number of the last transaction log file
+- 2 x 8 byte buffers:
+    - one for the number of the last transaction log file
+    - one for the number of the last transaction log file (alternating between the two buffers)
+- 1 file that keeps track of the current transaction log file number
+- 1 file that keeps track of the current transaction log when updating
+- commits should be indempotent
+- database starts up
+    - read the current transaction log file number
+
+Transaction recovery process for when database crashes:
+- have a variable that keeps track of cursor position as integer
+- cursor starts at 0
+- get length of the transaction log file
+- while cursor is less than length of transaction log file:
+    - read the header and get the:
+        - crc32 checksum
+        - length of serialised data
+        - tx UUID
+    - if checksum is valid:
+        - read the serialised data
+        - deserialise the data
+        - apply each command in the transaction to the database store
+        - increment cursor by the length of the header + the length of the serialised data + the length of the crc32 checksum
+    - if checksum is not valid:
+        - write the rest of the transaction log data corrupt data to a separate backup file
+
+After transaction has been committed:
+    - write the
+
+- read the transaction log, which contains multiple transactions
+- for each transaction:
+  - read header
+  - get the checksum
+  - get the serialised commands
+  - if the checksum doesn't match
+    - discard the transaction
+  - else
+    - deserialise the commands
+    - apply the commands to the store
+
+
+
+Ideal system
+============
+
+node-level locking based thread accessing a node
+each db gets a lock over a range of nodes based on their availability
+
+
+inserts:
+--------
+db a
+db b
+
+Both get a request to insert a new user, both add to the index
+then they recieve eachothers request and add to index
+it should result in the exact same index due to sorting
+
+
+
+
+
+deadlock resolution algorithm:
+
+- transaction trys to acquire a lock
+  - if it acquires lock
+    - do the operation
+  - if there is an existing lock
+    - add transaction to queue
+    - if the existing lock is owned by the same transaction
+        - continue
+    - else
+        - create a variable TX to keep track of transaction
+        - get the transaction holding the lock
+        - while true
+            - if the transaction is the same as the current transaction
+                - return error
+            - else if transaction is waiting for a lock
+                - get the transaction holding the lock and store it in the variable TX
+                - continue
+            - else
+                - break
+        - wait for lock to release, and then acquire it
+        - acquire lock
+            - do the operation
+        - release lock
+
+
+
+await database.waitForLockRelease(resource)
+
+class Database {
+
+    locks = new Map()
+
+    async tryToAcquireLock(resource: number) {
+        if (this.locks.has(resource)) {
+
+        while true {
+            if (this.locks.has(resource)) {
+                const tx = this.locks.get(resource)
+}
+
+
+lock queue functionality:
+- keep a list of locks by their id
+
+- while true
+    - if there is a transaction waiting for a lock
+        - get the transactopm
+
+
+==========
+Steps:
+1.  DONE -In ClientConnection.ts, make it so that if a txid is provided in the command, find the existing transaction instead of always creating a new one
+2. Add the ability for each transaction to have it's own internal transaction state
+    - docs:
+        - find operation -> we firstly check the internal transaction state if it exists, else we check the main database
+        - update operation -> find or create doc in internal transaction state
+        - delete -> class Deleted, if we're checking to find a doc, we check internal state first and do this doc instanceof Deleted, return null
+        - insert -> works like update, except we don't need to bother finding
+    - indexes:
+        - createIndex
+        - deleteIndex
+        - add():
+        - remove:
+        - addSubIndex
+        - removeSubIndex
+    - Layers of data retrieval:
+        - TX state
+            - this keeps track of any local state changes of docs in transactions, and includes indexes too.
+            - Anything that can't be found in here searches the in-memory database next
+        - in-memory database storage
+            - keeps track of docs and indexes which haven't been persisted to disk yet, but have been persisted to transaction logs
+            - Anything that can't be found here searches the LRU cache
+        - LRU cache
+            - keeps in memory the representation of docs and indexes which are frequently accessed using a least-recently-used cache
+            - Anything that can't be found here searches the disk store, and adds the item to the LRU
+        - disk store
+            - for any items that can't be found in the LRU cache, the disk is the final location to search for a node or index
+            - anything that can't be found here doesn't exist
+
+3. DONE - Add read/write lock system
+4. Add transaction log system & store all information regarding the transaction
+    - generate list of commands to do
+    - serialize list of commands with ADN (called Data)
+    - generate header for ADN strings with following details:
+        - txid
+        - timestamp
+        - length
+        - version
+        - checksum
+    -Serialize data to get length of the ADN string?
+5. Index Write To Disk system
+    - ability to write the in-memory representation of the btree to disk and allow async retrieval of disk objects
+
+---- list of all commands
+- free space (1): [number, number][]
+- allocate space (2): [number, number][]
+- free id(3): number[]
+- allocate id (4): number[]
+- write (5): [offset: number, length: number, data: any]
+
+
+data[key] = value
+
+log: {
+    freeSpace: [
+        [25, 256]
+    ],
+    allocateSpace: [
+        [2]
+    ]
+}
+
+---
+
+- src
+  - index.ts
+  - database
+    - ClientConnection.ts
+    - Server.ts
+    - Database.ts
+  - commands
+    - ...
+  - layers
+    - transaction
+      - Transaction.ts
+      - TransactionState.ts
+      - TransactionCollectionState.ts
+      - TransactionSubcollectionState.ts
+    - inmemory
+      - InMemory.ts
+      - InMemoryState.ts
+      - InMemoryCollectionState.ts
+      - InMemorySubcollectionState.ts
+    - LRUCache
+      - LRUState.ts
+      - LRUCollectionState.ts
+      - LRUSubcollectionState.ts
+      - LRUCache.ts
+    - Disk
+      - Disk.ts
+  - collection
+    - Collection.ts
+    - CollectionInterface.ts
+    - CollectionStateInterface.ts
+  - subcollection
+    - Subcollection.ts
+    - SubcollectionInterface.ts
+    - SubcollectionStateInterface.ts
+    - LockQueue.ts
+
+## Index System
+
+Heirarchy of database structure:
+
+- Database
+  - Transaction Log
+  - Collection: Items
+    - Store: Docs (records which point to offsets + lengths)
+      - Doc 1: adn string
+      - Doc 2: adn string
+    - Index: Indexes (records which point to offsets + lengths)
+      - Index 1: adn string
+      - Index 2: adn string
+    - BNodes: BNodes (records which point to offsets + lengths)
+      - BNode 1: adn string
+      - BNode 2: adn string
+    - Metadata File: stores metadata of collection
+  - Collection: Analytics
+  - Collection: Jobs
+  - Collection: User
+
+interface CollectionStateInterface {
+    // metadata of the collection
+    name: string
+    rootIndexes: // todo
+
+    // end metadata
+
+    doc: SubcollectionStateInterface
+    index: SubcollectionStateInterface
+    bnode: SubcollectionStateInterface
+}
+
+interface SubcollectionStateInterface<V> {
+    // metadata of the subcollection
+    freeIds:
+    // end metadata
+
+    async get(): Promise<V | null>
+    async set(key: number, value: V): Promise<void>
+    async remove(key: number): Promise<void>
+
+    async getID(tx: Transaction): Promise<number>
+    async releaseID(tx: Transaction): Promise<void>
+}
+
+class Collection {
+    name: string
+
+    doc: Subcollection
+    index: Subcollection
+    bnode: Subcollection
+}
+
+class Subcollection {
+    lockQueue<id, LockQueue> = new Map()
+}
+
+class Transaction {
+    txCollectionStates: Map<string, TransactionCollectionState> = new Map()
+
+    constructor (database: Database) {
+        this.database = database
+
+    }
+
+    getOrCreateCollectionState(collectionName: string): TransactionCollectionState {
+        if (this.txCollectionStates.has(collectionName)) {
+            return this.txCollectionStates.get(collectionName)
+        } else {
+            const collectionState = new TransactionCollectionState(database.getOrCreateCollection(collectionName)))
+
+            this.txCollectionStates.set(collectionName, collectionState)
+            return collectionState
+        }
+    }
+
+    commit() {
+        // do all the commit stuff and write to log
+        // once done, free up all the locks for each transactionCollectionState's subcollections
+        // foreach releaseLock in releaseLockCallbacks
+        // releaseLock()
+    }
+}
+
+class TransactionCollectionState implements CollectionStateInterface {
+    collection: Collection
+
+    doc: SubcollectionStateInterface<any>
+    index: SubcollectionStateInterface<Index>
+    bnode: SubcollectionStateInterface<BNode>
+
+    constructor(collection: Collection){
+        this.collection = collection
+
+        this.docs = new SubcollectionState(collection.doc)
+        this.indexes = new SubcollectionState(collection.index)
+        this.bnodes = new SubcollectionState(collection.bnode)
+    }
+}
+
+class TransactionSubcollectionState<V> implements SubcollectionStateInterface<V> {
+
+}
+
+class Database {
+    collections: Map<string, Collection> = new Map()
+}
+
+class InMemoryCollectionState {
+    store: Map<number, any> = new Map()
+    indexes: Map<number, Index> = new Map()
+    bnodes: Map<number, BNode> = new Map()
+}
+
+class DiskCollectionState {
+
+    getBNode: (id: number) => BNode | null
+}
+
+class Collection {
+    store: Map<number, any>
+    indexes: Map<number, >
+}
+
+Decisions to be made:
+- [x] Should we support multiple collections
+    - Yes, because we'll want to add multiple collections to the same database in the future, for example, for analytics or other data like jobs, automations etc which wouldn't really behave like "nodes" in collections
+-
+- Should indexes be treated as collections?
+-
+- Should we use a single index for all types of data?
+
+
+---
+
+Index cloning mechanism
+
+class BNode {
+    id: number
+}
+
+inmemory stores an ADN string
+txState stores an ADN string as well
+
+when we get a node, it's always inherently a clone.
+we can do modifications and call the set function on the txState if changes were done
+
+benefits:
+- remove the need to deal with clone BS
+- remove the possibility of data leaks across TX's
+
+disadvantages:
+- we need to manually call .markAsModified() on the txState
+- cloning has a cost
+- we're not caching an instantiation of the bnodes in memory (we can probably do this, .getCachedOrCreateBNode - this can be done for reads too)
+
+getCachedOrCreateBNode:
+- if we have a cached bnode, return it.
+- if we don't, create a bnode from the ADN string either in txState or in memory
+- if we do this, we need to have flags on which bnodes should be considered modified (i.e. which should be written to disk)
+
+## Todo:
+- [ ] remove clone shit
+- [ ] remove isSharing shit
+- [ ] add markAsModified() to TransactionState
+- [ ] add getCachedOrCreateBNode() to TransactionState
+
+Set Operations
+- Find the node with the given id
+
+
+interface Serializable {
+    toCommands(): Command[]
+}
+
+interface BNodeSubcollection {
+    // returns an already instantiated BNode, or a new one, or throws an error if it doesn't exist.
+    // calls tryToAcquireLock on SubcollectionManager
+    get(id: number): Promise<BNode>
+
+    set(id: number, value: BNode): Promise<void>
+
+    setAsModified(id: number): void
+
+    remove(id: number): Promise<void>
+}
+
+interface SubcollectionState {
+
+    allocateID(): Promise<number>
+}
+
+- any modifications always need to update the TxState and not a layer below
+- we have to clone from in-memory when doing a write, and set the clone as the new value in the TxState
+- we should use existing node if it is in a txState, and not clone
+
+
+
+
+- toCommands - used for commiting
+
+
+- commit process:
+  - go to each collection and call .toCommands(), join the results, and write to log
+  -
+
+---
+
+- src
+    - layers
+        - transaction
+        - inmemory
+            -
+        - LRUCache
+        - disk
+
+

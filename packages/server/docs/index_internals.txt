@@ -1,0 +1,168 @@
+
+## Index update operation
+We need to get the indexes that the doc may have previously belonged to, and then ensure that they are still valid.
+
+We should remove the doc from any indexes that it should no longer belong to, and add it to any indexes that it should belong to, avoiding redundant set operations.
+
+Operations:
+- create a variable called oldDoc which is a copy of the doc before the update
+- create a variable called newDoc which is a copy of the doc after the update
+- create a variable called oldIndexes which contains the indexes the oldDoc was previously in by calling this.getIndexesFor(oldDoc)
+- create a variable called newIndexes which contains the indexes the newDoc now belongs to by calling this.getIndexesFor(newDoc)
+- find shouldRemove difference between the two sets of indexes using the difference method, using the index ids
+- find shouldAdd difference between the two sets of indexes using the difference method, using the index ids
+- remove the doc from the shouldRemove array
+- add the doc to the shouldAdd array
+- insert the doc into the tx state
+
+
+let oldIndexes = [
+    [Index<1>, 'albert'],
+    [Index<2>, 20],
+    [Index<3>, 'ceo'],
+    [Index<5>, 'insane marketing']
+]
+
+let newIndexes = [
+    [Index<1>, 'lenard'],
+    [Index<2>, 30],
+    [Index<4>, 25000]
+    [Index<5>, 'insane marketing']
+]
+
+---
+
+ shouldRemove = [
+    Index<3>
+] // with this we remove the value
+
+function checkShouldRemove(){
+
+}
+
+let shouldUpdate = [
+    Index<1>
+    Index<2>
+] // with this we remove and set the value
+
+let shouldAdd = [
+    Index<4>
+] // with this we set the value
+
+---
+
+valueIndexes = unique
+propertyIndexes = non-unique and leafs point to unique indexes
+
+collection.getIndexesFor(doc):
+- get rootIndexes
+- indexes = []
+- for each rootIndexes as index
+    - indexes.push(...index.getIndexesFor(doc))
+
+
+propertyIndex.getIndexesFor(doc):
+- belongsToIndex = this.shouldBelongToIndex(doc)
+- let value = doc[this.property]
+- if belongsToIndex is null
+    - return []
+- else
+    - return [[this, value], ...value.getIndexesFor(doc)]
+
+
+
+
+
+valueIndex.getIndexesFor(doc):
+- let value = doc[this.property] // property equals entityID in most cases, but can check another unique value
+- return [[this, value], ...(...this.subindexes.map(subindex => subindex.getIndexesFor(doc)))]
+
+
+shouldAddTo: Index[] = [Itself, ...children, ...subindexes] // etc
+
+propertyMap process
+- get node of index
+- let oldindexes be txColl.getIndexesFor(node)
+- apply changes to node's propertymap index
+- call prepareindexes for node
+- let newindexes be txColl.getIndexesFor(node)
+- let shouldRemove be the indexes that were in oldindexes but not in newindexes
+- let shouldAdd be the indexes that were in newindexes but not in oldindexes
+- let shouldUpdate be the indexes that were in both oldindexes and newindexes
+- for each shouldRemove
+    - remove node from index
+- for each shouldAdd
+    - add node to index
+- for each shouldUpdate
+    - update node in index
+
+
+----
+
+Get me all of the nodes where the following is true
+    where <organisation:tool.id>
+    where <instance of.*.to:task.id>
+    where <assignee.*.to:me>
+
+function getOrganisationIndex(view)
+    - get the root index for "organisation"
+    - let index be rootIndex.get(view.organisation) as UniqueIndex
+
+function setupIndexesForView(view)
+    - let index be getOrganisationIndex(view)
+    - let indexPaths be view.indexPaths
+    - for each indexPath
+        - call index.ensureIndex(indexPath)
+        - let index be indexPath.getSubindex(indexes)
+    - call index.ensureIndexes([instanceof.*.to]])
+    - let index be index.getSubindex([instanceof.*.to])
+    - let index be index.get(task.id) as UniqueIndex
+    - call index.ensureIndexes([assignee.*.to])
+
+- task : {
+    multiselect: [
+        edge1 -> a
+        edge2 -> b
+        edge3 -> c
+    ]
+}
+
+- get me all the nodes which belong in organisation:X and
+    where instance of:task
+    where multiselect.*.to:australia
+
+-
+
+
+users.ensureRootIndex([
+	['email', subindexes]
+])
+
+items.ensureRootIndex([
+	['organisation']
+])
+
+col.ensureRootIndex(type: IndexTypes.unique, IndexTypes.property, path: string) {
+    let rootIndexes = col.rootIndexes
+    let exists = false
+    for (let id of rootIndexes) {
+        let index = this.getIndex(id) as RootIndex | undefined
+        if (index) {
+            if(type === IndexTypes.unique && path === index.uniquePath) {
+                exists = true
+                break
+            } else if(type === IndexTypes.property && path === index.propertyPath) {
+                exists = true
+                break
+            }
+        }
+    }
+    if(!exists) {
+        let index = new RootIndex(type, path)
+        rootIndexes.push(index.id)
+        this.insert(index)
+    }
+}
+
+// kanban
+// filtering system

@@ -37,12 +37,15 @@ export class LockQueue {
 
     async getLockPromise(hasItems: hasItems) {
         let shouldCallNext = this.isEmpty
+
         let lockItem = this.items.find(item => item.tx === hasItems.tx)
+
         if(!lockItem) {
             lockItem = { tx: hasItems.tx, deferred: new Deferred<void>()}
             this.items.push(lockItem)
             if(shouldCallNext) this.next()
         }
+
         await lockItem.deferred.promise
         hasItems.releaseLockCallbacks.push(() => { // lock release function
             this.items.shift()

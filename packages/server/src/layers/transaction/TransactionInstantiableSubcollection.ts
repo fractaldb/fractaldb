@@ -26,6 +26,7 @@ export class TransactionInstantiableSubcollection<I extends Deinstantiator<V>, V
     }
 
     async getOrInstantiate(id: number): Promise<I | null> {
+        await this.lock(id)
         let instance = this.instances.get(id)
         if (!instance) {
             let item = await this.getActual(id)

@@ -64,19 +64,46 @@ export default class LockEngine {
         // transaction 2, and transaction 2 (tx) is now trying to acquire a lock on resource 1
         // this results in a deadlock that cannot be resolved without cancelling one of the transactions
 
-        let currentTx: Transaction
-        let currentQueue: LockQueue = queue
+        // deadlock resolution algorithm:
 
-        if(currentQueue.items[0].tx !== tx) {
+        // - transaction trys to acquire a lock
+        //   - if it acquires lock
+        //     - do the operation
+        //   - if there is an existing lock
+        //     - add transaction to queue
+        //     - if the existing lock is owned by the same transaction
+        //         - continue
+        //     - else
+        //         - create a variable TX to keep track of transaction
+        //         - get the transaction holding the lock
+        //         - while true
+        //             - if the transaction is the same as the current transaction
+        //                 - return error
+        //             - else if transaction is waiting for a lock
+        //                 - get the transaction holding that new lock and store it in the variable TX
+        //                 - continue
+        //             - else
+        //                 - break
+        //         - wait for lock to release, and then acquire it
+        //         - acquire lock
+        //             - do the operation
+        //         - release lock
+
+        if(queue.items[0].tx !== tx) { // if the transaction is not the first in the queue
+            let currentTx: Transaction = queue.items[0].tx // get the transaction that is currently holding the lock
+
             while (true) {
-                currentTx = currentQueue.items[0].tx
                 if (currentTx === tx) { // deadlock has occured
                     throw new DeadLockError('Deadlock has occured')
-                } else if (currentTx.waitingOn !== undefined) { // waiting on something
-                    // get the transaction holding the lock
-                    if(resource !== currentTx.waitingOn) break
+                } else if (currentTx.waitingOn !== undefined) {
+                    // the currentTx is waiting on something
+                    // get the transaction that is currently holding the lock
+                    currentTx = (this.locks[currentTx.waitingOn] as LockQueue).items[0].tx
 
-                    currentQueue = this.locks[resource] as LockQueue
+                    // we have to wait because this could go on forever,
+                    // and never let the transaction holding the lock finish
+                    await new Promise(resolve => setImmediate(resolve))
+
                     continue
                 } else {
                     break

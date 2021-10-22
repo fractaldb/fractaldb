@@ -3,6 +3,7 @@ import { FractalServer } from '@fractaldb/fractal-server'
 import { runner } from '@framework-tools/catchit'
 import { ValueTypes } from '@fractaldb/shared/structs/DataTypes.js'
 import { NodeStruct } from '@fractaldb/shared/structs/NodeStruct'
+import HasItemsAbstract from '../dist/layers/transaction/abstract/HasItemsAbstract'
 
 let { describe, expect, run, test} = runner()
 
@@ -46,6 +47,40 @@ let col = client.db('main').collection('items')
 describe('locking system', () => {
     test.todo('deadlock throws TransientError to transaction during a deadlock (offender)')
     test.todo('deadlock throws TransientError to transaction during a deadlock (non-offending)')
+})
+
+describe('get multiple values simultanously', () => {
+    test('can get same node simultanously', async () => {
+        let tx1 = server.beginTx()
+        let tx2 = server.beginTx()
+
+        let hasItems1 = {
+            tx: tx1,
+            releaseLockCallbacks: [],
+        }
+        let hasItems2 = {
+            tx: tx2,
+            releaseLockCallbacks: [],
+        }
+
+        let lock1 = server.lockEngine.tryToAcquireLock('abc', tx1, hasItems1 as any).then(() => {
+            hasItems1.releaseLockCallbacks.map((cb: any) => cb())
+        })
+        let lock2 = server.lockEngine.tryToAcquireLock('abc', tx2, hasItems2 as any).then(() => {
+            hasItems2.releaseLockCallbacks.map((cb: any) => cb())
+        })
+
+        await Promise.all([lock1, lock2])
+    })
+    test('can delete nodes simultanously', async () => {
+        let node1 = await col.createNode()
+        let node2 = await col.createNode()
+
+        let prom1 = col.deleteNode(node1.id)
+        let prom2 = col.deleteNode(node2.id)
+
+        await Promise.all([prom1, prom2])
+    })
 })
 
 describe('indexes', () => {
@@ -131,3 +166,5 @@ describe('database transaction system', () => {
 })
 
 await run()
+
+await server.stop()

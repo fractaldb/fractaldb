@@ -14,7 +14,6 @@ export async function IndexGetCommand (op: IndexGet, tx: Transaction): Promise<I
         throw new Error('Index is not a property map')
     }
     // create the value that stores the value of the set operation
-
     let get = await index.get(op.key)
     if(!get) {
         return {}

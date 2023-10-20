@@ -1,9 +1,9 @@
-import JSONObject from '../utils/JSONObject'
-import { BaseOperation } from './BaseOperation'
+import { Entity } from '../utils/Entity.js'
+import { BaseOperation } from './BaseOperation.js'
 
 export interface DeleteMany extends BaseOperation {
     op: 'DeleteMany'
-    query: JSONObject
+    query: Entity
 }
 
 export interface DeleteManyResponse {

@@ -1,5 +1,5 @@
-import Collection from './Collection'
-import Database from './Database'
+import Collection from './Collection.js'
+import Database from './Database.js'
 import { randomBytes } from 'crypto'
 
 export class FractalNamespace {

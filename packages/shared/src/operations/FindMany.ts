@@ -1,30 +1,20 @@
-type internalID = number
-type entityID = string
-type EntityObj = {
-    entityID: entityID,
-    doc: JSONObject
-}
-type Entity = { internalID: internalID } & EntityObj
-type EntityMap = Map<internalID, EntityObj>
-type InsertedID = {
-    internalID: internalID,
-    entityID: entityID
-}
-
-import JSONObject from '../utils/JSONObject'
-import { BaseOperation } from './BaseOperation'
+import { NodeStruct } from '../structs/NodeStruct.js'
+import { BaseOperation } from './BaseOperation.js'
 
 export interface FindMany extends BaseOperation {
     op: 'FindMany'
-    query: JSONObject
-    batchSize: Number
+    database: string
+    collection: string
+    query: any
+    batchSize: number
+    limit: number
     closeCursor: boolean
-    projection?: JSONObject
+    projection?: any
 }
 
 export interface FindManyResponse {
-    cursorID: string
-    entities: Entity[]
+    cursorID?: string
+    nodes: NodeStruct[]
 }
 
 export interface FindManyMore extends BaseOperation {
@@ -33,5 +23,5 @@ export interface FindManyMore extends BaseOperation {
 }
 
 export interface FindManyMoreResponse {
-    entities: Entity[]
+    nodes: NodeStruct[]
 }

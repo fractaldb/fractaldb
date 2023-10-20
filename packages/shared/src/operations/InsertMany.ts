@@ -1,25 +1,12 @@
-type internalID = number
-type entityID = string
-type EntityObj = {
-    entityID: entityID,
-    doc: JSONObject
-}
-type Entity = { internalID: internalID } & EntityObj
-type EntityMap = Map<internalID, EntityObj>
-type InsertedID = {
-    internalID: internalID,
-    entityID: entityID
-}
-
-
-import  JSONObject  from '../utils/JSONObject'
-import { BaseOperation } from './BaseOperation'
+import { Entity } from '../utils/Entity.js'
+import { BaseOperation } from './BaseOperation.js'
+import { EntityID } from '@fractaldb/adn/EntityID.js'
 
 export interface InsertMany extends BaseOperation {
     op: 'InsertMany'
-    docs: JSONObject[]
+    docs: Entity[]
 }
 
 export interface InsertManyResponse {
-    insertedIDs: InsertedID[]
+    insertedIDs: EntityID[]
 }

@@ -1,0 +1,42 @@
+{
+  "name": "@fractaldb/indexing-system",
+  "version": "0.3.10",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*"
+  },
+  "typesVersions": {
+    "*": {
+      ".": [
+        "./dist/index.d.ts"
+      ],
+      "./dist/index.d.ts": [
+        "./dist/index.d.ts"
+      ],
+      "*": [
+        "dist/*"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run compile",
+    "clean": "rimraf -rf ./dist && rimraf ./tsconfig.tsbuildinfo",
+    "watch": "tsc -w",
+    "compile": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "npm run build"
+  },
+  "dependencies": {
+    "@fractaldb/fractal-server": "^0.3.10",
+    "@framework-tools/catchit": "^1.0.11",
+    "ts-node": "^10.0.0"
+  },
+  "gitHead": "c37aa9a5e888c96ae9898af1a72310e7f3b39412",
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,172 @@
+
+
+## Database Structure
+
+### Data files
+- Database
+    - Collections
+        - Users
+            - nodes.fdb
+            - values.fdb
+            - indexes.fdb
+            - bnodes-[].fdb
+        - Organisations
+            - nodes.fdb
+            - values.fdb
+            - indexes.fdb
+            - bnodes.fdb
+        - Items
+            - nodes.fdb
+            - values.fdb
+            - indexes.fdb
+            - bnodes.fdb
+
+1. create a data persistence log & abstract it away from transaction memory
+  - pros:
+    - abstract away from transaction memory
+  - cons:
+    - need to build a separate log system for data persistence
+2. implement powerofvalues system in transaction memory - doing this one
+  - pros:
+    - no need to create data persistence log
+  - cons:
+    - complex to implement
+    - less abstraction
+    - have to serialise & deserialise values in transaction memory
+3. store old & new power values in same log system
+  - pros: no need to create data persistence log
+  - cons: slightly complex to implement
+
+----
+
+storing id allocations in metadata file
+storing freeids in metadata file
+storing nexthighestid in metadata file
+
+
+[power: 64-bit number, realid: 64-bit number]
+[power: 64-bit number, realid: 64-bit number]
+[power: 64-bit number, realid: 64-bit number]
+[power: 64-bit number, realid: 64-bit number]
+[power: 64-bit number, realid: 64-bit number]
+
+nodes-power-of-2.fdb = 0000|0000|0000|0000|0000
+nodes-power-of-3.fdb = 11110000|00000000|00000000|00000000
+nodes-power-of-4.fdb = 0000000000000000|0000000000000000|0000000000000000|0000000000000000
+
+node: [id, propertiesid, referencesid]
+index: [id, type, path, rootid]
+bnodeleaf: [id, keys: any[], values: id[]]
+bnode: [id, keys: any[], children: bnodeid[]]
+value: [ValueType: 1 byte][value]
+
+[id: number]: [power, realid]
+[id: number]: [power, realid]
+
+I wanna get a node -> [id, propertiesid, referencesid]
+I wanna get nodeindex property -> [id, key] -> [ValueType, value]
+I wanna set nodeindex property -> [id, key, value] -> true
+
+NodeCommands: {
+    insert()
+    getNode(id) -> [id, propertiesid, referencesid]
+    getProp(id, key)
+    setProp(id, key, value)
+    deleteNode(id) -> true
+}
+
+IndexCommands: [
+    get(id, key) -> [ValueType, value]
+    set(id, key, value) -> boolean
+    deleteIndex(id) -> boolean
+    createIndex() -> id
+]
+
+enum ValueFrom {
+    Index: 0
+    Value: 0
+}
+
+enum ValueType {
+    Value: 0
+    Index: 1
+    Node: 2
+    Edge: 3
+}
+
+- edges have an index of all values that reference them
+
+## Database indexing system
+4 main indexing cases
+
+- creating an index (as a subindex)
+    - get parentIndex
+    - add index to parentIndex subindexes
+    - iterate through all parent index nodes
+    - for node of nodes
+        - check if node has required properties (via getter functions)
+        - if so, add to index
+- creating an index (root index)
+    - add index to root indexes
+    - iterate through all nodes
+    - for node of nodes
+        - check if node has required properties (via getter functions)
+        - if so, add to index
+
+- updating a dependent property
+    - get the node for the property being set
+    - get all oldIndexes for the node
+    - apply set operation to node's property indexes
+    - get all newIndexes for the node
+    - find shouldRemove difference between the two sets of indexes using the difference method, using the index ids
+    - find shouldAdd difference between the two sets of indexes using the difference method, using the index ids
+    - remove the node from the shouldRemove array
+    - add the node to the shouldAdd array
+
+- adding a property
+    - get the node for the property being set
+    - call "updating a dependent property"
+    - get the node property index for the property being set
+    - get the current value for the property being set
+    - if the value is not null
+        - if the value is an index
+            - recursively delete all bnodes & values using same process in the index
+            - replace the value with the new value
+        - else
+            - replace the value with the new value
+    - else
+        - add node to index with key as the index target property
+
+
+creating a node
+TECHNICALLY THIS Falls under updating a dependent property
+creating the index (AS A SUBINDEX)
+ITERATE THROUGH ALL PARENT INDEX NODES
+FOR NODE OF NODES
+CHECK IF NODE HAS REQUIRED PROPERTIES
+IF TRUE, ADD TO INDEX & SUBINDEXES
+updating/CREATING a dependent property
+get ROOT DOC for property
+CALL PREPAREINDEXES for ROOT DOC
+CALL PREPAREINDEXES
+
+## Database Transaction Logs
+
+
+## Database Data Persistance
+
+
+{
+    title: "build website",
+    pages: {
+        "blockid:1": page
+    }
+}
+
+
+{
+    parent: null
+    template: "page"
+    node: node
+    permisions: {}
+}
